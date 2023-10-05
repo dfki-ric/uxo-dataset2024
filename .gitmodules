@@ -1,0 +1,3 @@
+[submodule "01_extract/aris-file-sdk"]
+	path = 01_extract/aris-file-sdk
+	url = https://github.com/SoundMetrics/aris-integration-sdk.git
