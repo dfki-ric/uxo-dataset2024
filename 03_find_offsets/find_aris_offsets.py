@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import sys
 import os
-from random import randint
 import yaml
 import numpy as np
 import cv2
