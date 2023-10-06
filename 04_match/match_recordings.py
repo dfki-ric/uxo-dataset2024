@@ -19,11 +19,15 @@ def usage():
     print(f'{sys.argv[0]} <aris-folder> <gantry-folger> <gopro-folder> <output_file.csv>')
 
 
+def basename(s):
+    return os.path.split(s)[-1]
+
+
 class MatchingContext:
     def __init__(self, aris_dir, gantry_file, gopro_file):
-        self.aris_basename = os.path.split(aris_dir)[-1]
-        self.gantry_basename = os.path.split(gantry_file)[-1]
-        self.gopro_basename = os.path.split(gopro_file)[-1]
+        self.aris_basename = basename(aris_dir)
+        self.gantry_basename = basename(gantry_file)
+        self.gopro_basename = basename(gopro_file)
         
         self.aris_meta = pd.read_csv(os.path.join(aris_dir, self.aris_basename + '_frames.csv'))
         self.aris_frames = sorted(os.path.join(aris_dir, f) for f in os.listdir(aris_dir) if f.lower().endswith('.pgm'))
@@ -41,25 +45,27 @@ class MatchingContext:
         self.aris_frame_idx = -1
         self.aris_frame_count = len(self.aris_frames)
         self.aris_t0 = self.aris_meta.at[0, 'FrameTime']
-        self.aris_plot_img = None
+        self.aris_img = None
         
-        self.gopro_frame_idx = 0
+        self.gopro_frame_idx = -1
         self.gopro_offset = 0
-        self.gopro_frame = None
+        self.gopro_img = None
         
         self.gantry_offset = 0.
         
         self.reload = True
         
     def tick(self):
+        self.aris_img = None
         self.aris_frame_idx = (self.aris_frame_idx + 1) % self.aris_frame_count
         
     def get_aris_frame(self):
         # FrameTime = time of recording on PC (ms since 1970)
         # sonarTimeStamp = time of recording on sonar (ms since 1970), not sure if synchronized to PC time
-        timestamp = self.aris_meta.at[self.aris_frame_idx, 'FrameTime'] - self.aris_t0
-        frame = cv2.imread(self.aris_frames[self.aris_frame_idx])
-        return frame, timestamp
+        frametime = self.aris_meta.at[self.aris_frame_idx, 'FrameTime'] - self.aris_t0
+        if self.aris_img is None:
+            self.aris_img = QtGui.QPixmap(self.aris_frames[self.aris_frame_idx])
+        return self.aris_img, frametime
     
     def get_gopro_frame(self, aris_frametime):
         fps = self.gopro_clip.get(cv2.CAP_PROP_FPS)
@@ -69,9 +75,13 @@ class MatchingContext:
         if new_frame_idx != self.gopro_frame_idx:
             self.gopro_frame_idx = new_frame_idx
             self.gopro_clip.set(cv2.CAP_PROP_POS_FRAMES, self.gopro_frame_idx)
-            has_frame, self.gopro_frame = self.gopro_clip.read()
+            has_frame, gopro_frame = self.gopro_clip.read()
+            if has_frame:
+                img = cv2.cvtColor(gopro_frame, cv2.COLOR_BGR2RGB)
+                q_img = QtGui.QImage(img, img.shape[1], img.shape[0], QtGui.QImage.Format_RGB888)
+                self.gopro_img = QtGui.QPixmap(q_img)
         
-        return self.gopro_frame, self.gopro_frame_idx
+        return self.gopro_img, self.gopro_frame_idx
         
     def get_gantry_position(self, aris_frametime):
         timepos = (aris_frametime + self.gantry_offset) / 10e3
@@ -81,11 +91,8 @@ class MatchingContext:
         zi = np.interp(timepos, t, self.gantry_data['z'])
         return t, xi, yi, zi
         
-        
 
 class MainWindow(QtWidgets.QMainWindow):
-    reload_plots = QtCore.pyqtSignal(str)
-    
     def __init__(self, aris_data_dirs, gantry_files, gopro_files, out_file_path):
         super().__init__()
         
@@ -94,9 +101,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.gantry_files = gantry_files
         self.gopro_files = gopro_files
         self.out_file_path = out_file_path
-        self.aris_file_idx = 0
-        self.gantry_file_idx = 0
-        self.gopro_file_idx = 0
         
         # Everything else will be stored inside the context
         self.context = None
@@ -104,33 +108,43 @@ class MainWindow(QtWidgets.QMainWindow):
         # QT things
         self._main_widget = QtWidgets.QWidget(self)
         
+        # Plots
+        self.aris_canvas = QtWidgets.QLabel()
+        self.gopro_canvas = QtWidgets.QLabel()
+        
         self.fig = Figure()
-        grid = GridSpec(2, 2, figure=self.fig)
-        self.aris_plot = self.fig.add_subplot(grid[:, 0])
-        self.gantry_plot = self.fig.add_subplot(grid[1, 1])
-        self.gopro_plot = self.fig.add_subplot(grid[0, 1])
+        self.gantry_plot = self.fig.add_subplot()
         self.gantry_offset_marker = self.gantry_plot.axvline(0, color='orange')
         
-        self.canvas = FigureCanvas(self.fig)
-        self.canvas.setSizePolicy(QtWidgets.QSizePolicy.Expanding, 
-                                  QtWidgets.QSizePolicy.Expanding)
-        self.canvas.updateGeometry()
+        self.plot_canvas = FigureCanvas(self.fig)
+        self.plot_canvas.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.plot_canvas.updateGeometry()
         
-        # self.dropdown1 = QtWidgets.QComboBox()
-        # self.dropdown1.addItems(["sex", "time", "smoker"])
-        # self.dropdown2 = QtWidgets.QComboBox()
-        # self.dropdown2.addItems(["sex", "time", "smoker", "day"])
-        # self.dropdown2.setCurrentIndex(2)
-        # self.dropdown1.currentIndexChanged.connect(self.update)
-        # self.dropdown2.currentIndexChanged.connect(self.update)
-        # self.label = QtWidgets.QLabel("A plot:")
+        # UI controls
+        self.dropdown_select_aris = QtWidgets.QComboBox()
+        self.dropdown_select_aris.addItems([basename(f) for f in self.aris_data_dirs])
+        self.dropdown_select_aris.currentIndexChanged.connect(self.reload)
+        self.dropdown_select_gantry = QtWidgets.QComboBox()
+        self.dropdown_select_gantry.addItems([basename(f) for f in self.gantry_files])
+        self.dropdown_select_gantry.currentIndexChanged.connect(self.reload)
+        self.dropdown_select_gopro = QtWidgets.QComboBox()
+        self.dropdown_select_gopro.addItems([basename(f) for f in self.gopro_files])
+        self.dropdown_select_gopro.currentIndexChanged.connect(self.reload)
         
+        ui_layout = QtWidgets.QVBoxLayout()
+        ui_layout.addWidget(QtWidgets.QLabel("ARIS dataset"), )
+        ui_layout.addWidget(self.dropdown_select_aris)
+        ui_layout.addWidget(QtWidgets.QLabel("Gantry dataset"))
+        ui_layout.addWidget(self.dropdown_select_gantry)
+        ui_layout.addWidget(QtWidgets.QLabel("GoPro clip"))
+        ui_layout.addWidget(self.dropdown_select_gopro)
+        ui_layout.addStretch()
+
         self.layout = QtWidgets.QGridLayout(self._main_widget)
-        #self.layout.addWidget(QtWidgets.QLabel("Select category for subplots"))
-        #self.layout.addWidget(self.dropdown1)
-        #self.layout.addWidget(QtWidgets.QLabel("Select category for markers"))
-        #self.layout.addWidget(self.dropdown2)
-        self.layout.addWidget(self.canvas)
+        self.layout.addWidget(self.aris_canvas, 0, 0, 2, 1)
+        self.layout.addWidget(self.gopro_canvas, 0, 1)
+        self.layout.addWidget(self.plot_canvas, 1, 1)
+        self.layout.addLayout(ui_layout, 0, 2, 2, 1)
 
         self.setCentralWidget(self._main_widget)
         self.show()
@@ -140,10 +154,18 @@ class MainWindow(QtWidgets.QMainWindow):
         self.update_timer.timeout.connect(self.update)
         self.update_timer.setInterval(1000 // 15)
         self.update_timer.start()
-        
+
+    def reload(self):
+        self.context.reload = True
+    
     def update(self):
         if not self.context or self.context.reload:
-            self.context = MatchingContext(self.aris_data_dirs[self.aris_file_idx], self.gantry_files[self.gantry_file_idx], self.gopro_files[self.gopro_file_idx])
+            aris_file = self.aris_data_dirs[self.dropdown_select_aris.currentIndex()]
+            gantry_file = self.gantry_files[self.dropdown_select_gantry.currentIndex()]
+            gopro_file = self.gopro_files[self.dropdown_select_gopro.currentIndex()]
+            
+            self.context = MatchingContext(aris_file, gantry_file, gopro_file)
+            self.gantry_plot.cla()
             
             # Prepare the gantry plot. As we update, we will only move the vertical line marker across.
             gantry_data = self.context.gantry_data
@@ -158,20 +180,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.context.tick()
         
         # ARIS
-        aris_img, aris_frametime = self.context.get_aris_frame()
-        self.aris_plot.set_title(f'{self.context.aris_basename} - {self.context.aris_frame_idx}')
-        if self.context.aris_plot_img is None:
-            self.context.aris_plot_img = self.aris_plot.imshow(aris_img, cmap='gray', vmin=0, vmax=255)
-        else:
-            self.context.aris_plot_img.set_data(aris_img)
+        aris_frame, aris_frametime = self.context.get_aris_frame()
+        self.aris_canvas.setPixmap(aris_frame)
         
         # GoPro
         gopro_frame, gopro_frame_idx = self.context.get_gopro_frame(aris_frametime)
-        self.gopro_plot.set_title(f'{self.context.gopro_basename} - {gopro_frame_idx}')
-        if gopro_frame is not None:
-            self.gopro_plot.imshow(gopro_frame)
-        else:
-            self.gopro_plot.clear()
+        self.gopro_canvas.setPixmap(gopro_frame)
 
         # Gantry
         gantry_timepos = (aris_frametime + self.context.gantry_offset) / 10e3
