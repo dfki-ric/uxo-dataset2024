@@ -2,7 +2,6 @@
 import sys
 import os
 import csv
-import time
 import numpy as np
 import pandas as pd
 import cv2
@@ -38,11 +37,12 @@ class MatchingContext:
         self.gantry_data['t'] = self.gantry_data['timestamp_s'] + self.gantry_data['timestamp_ns'] / 10e9
         
         # Start at -1, this way the first call to tick() will move it to 0
-        self.aris_frame_idx = -1
+        self._aris_frame_idx = 0
         self.aris_frames_total = len(self.aris_frames)
         self.aris_t0 = self.aris_meta.at[0, 'FrameTime']
         self.aris_duration = (self.aris_meta.at[self.aris_frames_total - 1, 'FrameTime'] - self.aris_t0)
         self.aris_img = None
+        # TODO load first frame from save file
         
         self.gopro_frame_idx = -1
         self.gopro_frames_total = self.gopro_clip.get(cv2.CAP_PROP_FRAME_COUNT)
@@ -55,9 +55,18 @@ class MatchingContext:
         
         self.reload = True
         
+    @property
+    def aris_frame_idx(self):
+        return self._aris_frame_idx
+    
+    @aris_frame_idx.setter
+    def aris_frame_idx(self, new_val):
+        # TODO respect user limits if set
+        self._aris_frame_idx = new_val % self.aris_frames_total
+        
     def tick(self):
         self.aris_img = None
-        self.aris_frame_idx = (self.aris_frame_idx + 1) % self.aris_frames_total
+        self.aris_frame_idx += 1
         
     def get_aris_frame(self):
         # FrameTime = time of recording on PC (ms since 1970)
@@ -92,6 +101,53 @@ class MatchingContext:
 
 
 
+class MainWidget(QtWidgets.QWidget):
+    keyPressed = QtCore.pyqtSignal(int)
+    
+    def __init__(self, master):
+        super().__init__(master)
+        self.setFocusPolicy(QtCore.Qt.StrongFocus)
+        
+    def keyPressEvent(self, event):
+        super().keyPressEvent(event)
+        self.keyPressed.emit(event.key())
+
+
+class MySlider(QtWidgets.QSlider):
+    def __init__(self, orientation):
+        super().__init__(orientation)
+        self.mousePressPos = None
+        self.setMouseTracking(True)
+    
+    def mousePressEvent(self, e):
+        if e.button() == QtCore.Qt.LeftButton:
+            self.mousePressPos = e.pos()
+        else:
+            super().mousePressEvent(e)
+    
+    def mouseMoveEvent(self, e):
+        if self.mousePressPos is not None and e.buttons() & QtCore.Qt.LeftButton:
+            self.update_from_mouse_pos(e)
+        else:
+            super().mouseMoveEvent(e)
+    
+    def mouseReleaseEvent(self, e):
+        if  self.mousePressPos is not None \
+        and e.button() == QtCore.Qt.LeftButton \
+        and e.pos() in self.rect():
+            self.update_from_mouse_pos(e)
+            self.mousePressPos = None
+        else:
+            return super().mouseReleaseEvent(e)
+
+    def update_from_mouse_pos(self, e):
+        e.accept()
+        x = e.pos().x()
+        value = (self.maximum() - self.minimum()) * x / self.width() + self.minimum()
+        self.setValue(int(value))
+        
+
+
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, aris_data_dirs, gantry_files, gopro_files, out_file_path):
         super().__init__()
@@ -106,9 +162,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.context = None
         
         # QT things
-        self._main_widget = QtWidgets.QWidget(self)
-        # TODO
-        self._main_widget.keyPressEvent.connect(self._handle_keypress)
+        self._main_widget = MainWidget(self)
+        self._main_widget.keyPressed.connect(self._handle_keypress)
         
         # Plots
         self.aris_canvas = QtWidgets.QLabel()
@@ -132,12 +187,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.dropdown_select_gantry.addItems([basename(f) for f in self.gantry_files])
         self.dropdown_select_gantry.currentIndexChanged.connect(self.reload)
         
-        self.slider_aris_pos = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        self.slider_aris_pos = MySlider(QtCore.Qt.Horizontal)
         self.slider_aris_pos.valueChanged[int].connect(self._handle_aris_offset_slider)
         self.spinner_aris_pos = QtWidgets.QSpinBox()
         self.spinner_aris_pos.valueChanged[int].connect(self._handle_aris_offset_spinner)
         
-        self.slider_gopro_pos = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+        # TODO spinners for first and last aris frame
+        
+        self.slider_gopro_pos = MySlider(QtCore.Qt.Horizontal)
         self.slider_gopro_pos.setSingleStep(1)
         self.slider_gopro_pos.setPageStep(10)
         self.slider_gopro_pos.valueChanged[int].connect(self._handle_gopro_offset_slider)
@@ -145,9 +202,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.spinner_gopro_pos.setSingleStep(1)
         self.spinner_gopro_pos.valueChanged.connect(self._handle_gopro_offset_spinner)
         
+        # TODO slider and spinner for gantry offset
+        
         self.button_play_pause = QtWidgets.QPushButton()
         self.button_play_pause.setText("Play / Pause")
         self.button_play_pause.clicked.connect(self._handle_play_pause_button)
+        
+        # TODO save button
         
         ui_layout = QtWidgets.QVBoxLayout()
         ui_layout.addWidget(QtWidgets.QLabel("ARIS dataset"), )
@@ -184,34 +245,42 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Update in regular intervals
         self.update_timer = QtCore.QTimer()
-        self.update_timer.timeout.connect(self.update)
-        self.update_timer.setInterval(1000 // 15)
+        self.update_timer.timeout.connect(self.step)
+        self.update_timer.setInterval(1000 // 15)  # TODO make configurable
         self.update_timer.start()
     
     
     def _handle_keypress(self, key):
         if key == QtCore.Qt.Key.Key_Space:
             self._handle_play_pause_button()
+        else:
+            return
+        
+        #self.ensure_update()
     
     @QtCore.pyqtSlot(int)
     def _handle_aris_offset_slider(self, val):
         self.context.aris_frame_idx = val
         self.spinner_aris_pos.setValue(val)
+        self.ensure_update()
 
     @QtCore.pyqtSlot(int)
     def _handle_aris_offset_spinner(self, val):
         self.context.aris_frame_idx = val
         self.slider_aris_pos.setValue(val)
+        self.ensure_update()
 
     @QtCore.pyqtSlot(int)
     def _handle_gopro_offset_slider(self, val):
         self.context.gopro_offset = val
         self.spinner_gopro_pos.setValue(val)
+        self.ensure_update()
     
     @QtCore.pyqtSlot(int)
     def _handle_gopro_offset_spinner(self, val):
         self.context.gopro_offset = val
         self.slider_gopro_pos.setValue(val)
+        self.ensure_update()
 
     def _handle_play_pause_button(self):
         if self.update_timer.isActive():
@@ -236,7 +305,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # But we can also delay playback so much that it barely starts playing
         range_max = int(self.context.gopro_frames_total)
         
-        self.slider_aris_pos.setMaximum(self.context.aris_frames_total)
+        self.slider_aris_pos.setMaximum(self.context.aris_frames_total - 1)
         self.slider_gopro_pos.setRange(range_min, range_max)
         self.spinner_gopro_pos.setRange(range_min, range_max)
         
@@ -251,12 +320,17 @@ class MainWindow(QtWidgets.QMainWindow):
         
         self.context.reload = False
 
-    def update(self):
+    def step(self):
+        self.context.tick()
+        self.do_update()
+
+    def ensure_update(self):
+        if not self.update_timer.isActive():
+            self.do_update()
+
+    def do_update(self):
         if not self.context or self.context.reload:
             self.reset_context()
-        
-        # Update the context and plots
-        self.context.tick()
         
         # ARIS
         aris_frame, aris_frametime = self.context.get_aris_frame()
@@ -265,10 +339,14 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # GoPro
         gopro_frame, gopro_frame_idx = self.context.get_gopro_frame(aris_frametime)
-        self.gopro_canvas.setPixmap(gopro_frame)
+        if gopro_frame:
+            self.gopro_canvas.setPixmap(gopro_frame)
+        else:
+            print(f'no gopro frame for {aris_frametime}, this may be a bug')
 
         # Gantry
         gantry_odom, gantry_time = self.context.get_gantry_odom(aris_frametime)
+        # TODO seems to be wrong
         self.gantry_offset_marker.set_xdata([gantry_time, gantry_time])
 
         self.fig.canvas.draw_idle()
