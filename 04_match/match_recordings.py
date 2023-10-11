@@ -6,7 +6,7 @@ import yaml
 import numpy as np
 import pandas as pd
 import cv2
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -146,9 +146,9 @@ class MatchingContext:
 
 @dataclass
 class Association:
-    aris_basename: str
-    gopro_basename: str
-    gantry_basename: str
+    aris_idx: int
+    gopro_idx: int
+    gantry_idx: int
     aris_onset: int
     gopro_offset: int
     gantry_offset: float
@@ -205,7 +205,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, aris_data_dirs, gantry_files, gopro_files, out_file_path):
         super().__init__()
         
-        self.associated = set()
+        self.aris_associated = set()
+        self.gopro_associated = set()
+        self.gantry_associated = set()
         self.association_details = {}
         
         # Keep track of the files we're using
@@ -268,6 +270,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.button_associate = QtWidgets.QPushButton('&Associate')
         self.button_associate.clicked.connect(self._handle_associate_button)
         
+        self.button_save = QtWidgets.QPushButton('&Save')
+        self.button_save.clicked.connect(self._handle_save_button)
+        
         # Interactive elements layout
         ui_layout = QtWidgets.QVBoxLayout()
         ui_layout.addWidget(QtWidgets.QLabel("ARIS dataset"), )
@@ -291,6 +296,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
         ui_layout.addWidget(self.button_play_pause)
         ui_layout.addWidget(self.button_associate)
+        ui_layout.addWidget(self.button_save)
         
         ui_layout.addStretch()
 
@@ -302,6 +308,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.table_associations.setItem(0, 1, QtWidgets.QTableWidgetItem(' ' * len(self.gopro_files[0])))
         self.table_associations.setItem(0, 2, QtWidgets.QTableWidgetItem(' ' * len(self.gantry_files[0])))
         self.table_associations.resizeColumnsToContents()
+        table_columns_width = sum(self.table_associations.columnWidth(i) for i in range(self.table_associations.columnCount()))
+        self.table_associations.setMinimumWidth(table_columns_width + 20)
 
         # UI Layout
         ui_layout_wrapper = QtWidgets.QWidget()
@@ -309,7 +317,7 @@ class MainWindow(QtWidgets.QMainWindow):
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         splitter.addWidget(ui_layout_wrapper)
         splitter.addWidget(self.table_associations)
-        splitter.setStretchFactor(50, 100)
+        splitter.setStretchFactor(100, 50)
         
         self.layout = QtWidgets.QGridLayout(self._main_widget)
         self.layout.addWidget(self.aris_canvas, 0, 0, 2, 1)
@@ -331,30 +339,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.update_timer.start()
         
         self.reset_context()
-        
-    def refresh_dropdowns(self):
-        def mark_if_associated(name):
-            return f'* {name}' if name in self.associated else name
-        
-        def repopulate(dropdown, items):
-            idx = max(0, dropdown.currentIndex())
-            dropdown.currentIndexChanged.disconnect()
-            dropdown.clear()
-            dropdown.addItems([mark_if_associated(basename(f)) for f in self.aris_data_dirs])
-            dropdown.setCurrentIndex(idx)
-            dropdown.currentIndexChanged.connect(self.reload)
-        
-        repopulate(self.dropdown_select_aris, self.aris_data_dirs)
-        repopulate(self.dropdown_select_gopro, self.gopro_files)
-        repopulate(self.dropdown_select_gantry, self.gantry_files)
-        
-    def _handle_keypress(self, key):
-        if key in [QtCore.Qt.Key.Key_Space, QtCore.Qt.Key.Key_P]:
-            self.button_play_pause.animateClick()
-        elif key == QtCore.Qt.Key.Key_A:
-            self.button_associate.animateClick()
-        else:
-            return
     
     @QtCore.pyqtSlot(int)
     def _handle_aris_pos_slider(self, val):
@@ -398,37 +382,101 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def _handle_associate_button(self):
         association = Association(
-            self.context.aris_basename,
-            self.context.gopro_basename,
-            self.context.gantry_basename,
+            self.dropdown_select_aris.currentIndex(),
+            self.dropdown_select_gantry.currentIndex(),
+            self.dropdown_select_gopro.currentIndex(),
             self.context.aris_motion_onset,
             self.context.gopro_offset,
             self.context.gantry_offset
         )
         
-        # Store association
-        self.associated.add(association.aris_basename)
-        self.associated.add(association.gopro_basename)
-        self.associated.add(association.gantry_basename)
-        self.association_details[association.aris_basename] = association
+        # Check if there was a previous association with any of the files; if so, remove it
+        old_association = None
+        if association.aris_idx in self.aris_associated:
+            old_association = self.association_details[association.aris_idx]
+        elif association.gopro_idx in self.gopro_associated:
+            for a in self.association_details.values():
+                if a.gopro_idx == association.gopro_idx:
+                    old_association = a
+                    break
+        elif association.gantry_idx in self.gantry_associated:
+            for a in self.association_details.values():
+                if a.gantry_idx == association.gantry_idx:
+                    old_association = a
+                    break
+        
+        # TODO either one set per file list or use names instead of numbers 
+        if old_association is not None:
+            self.aris_associated.discard(old_association.aris_idx)
+            self.gopro_associated.discard(old_association.gopro_idx)
+            self.gantry_associated.discard(old_association.gantry_idx)
+            del self.association_details[old_association.aris_idx]
+            
+            self.table_associations.setItem(old_association.aris_idx, 1, None)
+            self.table_associations.setItem(old_association.aris_idx, 2, None)
+        
+        # Store new association
+        self.aris_associated.add(association.aris_idx)
+        self.gopro_associated.add(association.gopro_idx)
+        self.gantry_associated.add(association.gantry_idx)
+        self.association_details[association.aris_idx] = association
         
         # Update table
-        aris_idx = self.dropdown_select_aris.currentIndex()
-        self.table_associations.setItem(aris_idx, 1, QtWidgets.QTableWidgetItem(self.context.gopro_basename))
-        self.table_associations.setItem(aris_idx, 2, QtWidgets.QTableWidgetItem(self.context.gantry_basename))
+        self.table_associations.setItem(association.aris_idx, 1, QtWidgets.QTableWidgetItem(self.context.gopro_basename))
+        self.table_associations.setItem(association.aris_idx, 2, QtWidgets.QTableWidgetItem(self.context.gantry_basename))
         
+        # XXX Automatically skipping to next entries seemd counter-intuitive
         # Mark files as associated in dropdowns
-        def next_unassociated(items, start = 0):
-            for idx, f in enumerate(items[start:]):
-                if basename(f) not in self.associated:
-                    return start + idx
-            return start
-        
-        self.dropdown_select_aris.setCurrentIndex(next_unassociated(self.aris_data_dirs))
-        self.dropdown_select_gopro.setCurrentIndex(next_unassociated(self.gopro_files))
-        self.dropdown_select_gantry.setCurrentIndex(next_unassociated(self.gantry_files))
+        # def next_unassociated(items, start = 0):
+        #     for idx, f in enumerate(items[start:]):
+        #         if basename(f) not in self.associated:
+        #             return start + idx
+        #     return start
+        # 
+        # self.dropdown_select_aris.setCurrentIndex(next_unassociated(self.aris_data_dirs))
+        # self.dropdown_select_gopro.setCurrentIndex(next_unassociated(self.gopro_files))
+        # self.dropdown_select_gantry.setCurrentIndex(next_unassociated(self.gantry_files))
         
         self.refresh_dropdowns()
+
+    def refresh_dropdowns(self):
+        # TODO marking doesn't quite work yet
+        def mark_if_associated(name, idx, container):
+            return f'* {name}' if idx in container else name
+        
+        def repopulate(dropdown, items, association_set):
+            idx = max(0, dropdown.currentIndex())
+            dropdown.currentIndexChanged.disconnect()
+            dropdown.clear()
+            dropdown.addItems([mark_if_associated(basename(f), i, association_set) for i,f in enumerate(items)])
+            dropdown.setCurrentIndex(idx)
+            dropdown.currentIndexChanged.connect(self.reload)
+        
+        repopulate(self.dropdown_select_aris, self.aris_data_dirs, self.aris_associated)
+        repopulate(self.dropdown_select_gopro, self.gopro_files, self.gopro_associated)
+        repopulate(self.dropdown_select_gantry, self.gantry_files, self.gantry_associated)
+        
+    def _handle_keypress(self, key):
+        if key in [QtCore.Qt.Key.Key_Space, QtCore.Qt.Key.Key_P]:
+            self.button_play_pause.animateClick()
+        elif key == QtCore.Qt.Key.Key_A:
+            self.button_associate.animateClick()
+        elif key == QtCore.Qt.Key.Key_S:
+            self.button_save.animateClick()
+        else:
+            return
+
+    def _handle_save_button(self):
+        self.update_timer.stop()
+        
+        out_file_path, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Associations', '', 'Csv Files(*.csv)')
+        if not out_file_path:
+            return
+        
+        with open(out_file_path, 'w') as out_file:
+            writer = csv.DictWriter(out_file, Association.__dataclass_fields__.keys())
+            writer.writeheader()
+            writer.writerows(asdict(a) for a in self.association_details)
 
     def reload(self):
         if self.context:
@@ -498,21 +546,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
         self.fig.canvas.draw_idle()
     
-    def write_match(self):
-        # TODO check if file is empty, if so, write the header
-        writer = csv.writer(out_file)
-        writer.writerow([
-            'aris_file',
-            'gantry_file',
-            'gopro_file',
-            'gantry_timestamp_adjust',
-            'gopro_frame_offset'
-        ])
-        
-        # TODO write match from currentcontext
-        self.context.gantry_offset
-        self.context.gopro_offset
-
 
 
 if __name__ == '__main__':
