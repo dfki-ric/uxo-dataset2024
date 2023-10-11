@@ -268,7 +268,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.button_associate = QtWidgets.QPushButton('&Associate')
         self.button_associate.clicked.connect(self._handle_associate_button)
         
-        # Layout
+        # Interactive elements layout
         ui_layout = QtWidgets.QVBoxLayout()
         ui_layout.addWidget(QtWidgets.QLabel("ARIS dataset"), )
         ui_layout.addWidget(self.dropdown_select_aris)
@@ -294,11 +294,32 @@ class MainWindow(QtWidgets.QMainWindow):
         
         ui_layout.addStretch()
 
+        # Table
+        self.table_associations = QtWidgets.QTableWidget(len(self.aris_data_dirs), 3)
+        self.table_associations.setHorizontalHeaderLabels(['ARIS', 'GoPro', 'Gantry'])
+        for idx, aris_file in enumerate(self.aris_data_dirs):
+            self.table_associations.setItem(idx, 0, QtWidgets.QTableWidgetItem(basename(aris_file)))
+        self.table_associations.setItem(0, 1, QtWidgets.QTableWidgetItem(' ' * len(self.gopro_files[0])))
+        self.table_associations.setItem(0, 2, QtWidgets.QTableWidgetItem(' ' * len(self.gantry_files[0])))
+        self.table_associations.resizeColumnsToContents()
+
+        # UI Layout
+        ui_layout_wrapper = QtWidgets.QWidget()
+        ui_layout_wrapper.setLayout(ui_layout)
+        splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+        splitter.addWidget(ui_layout_wrapper)
+        splitter.addWidget(self.table_associations)
+        splitter.setStretchFactor(50, 100)
+        
         self.layout = QtWidgets.QGridLayout(self._main_widget)
         self.layout.addWidget(self.aris_canvas, 0, 0, 2, 1)
         self.layout.addWidget(self.gopro_canvas, 0, 1)
         self.layout.addWidget(self.plot_canvas, 1, 1)
-        self.layout.addLayout(ui_layout, 0, 2, 2, 1)
+        self.layout.addWidget(splitter, 0, 2, 2, 1)
+        #self.layout.addLayout(ui_layout, 0, 2, 2, 1)
+        #self.layout.addWidget(self.table_associations, 0, 3, 2, 1)
+        self.layout.setColumnStretch(2, 50)
+        #self.layout.setColumnStretch(4, 100)
 
         self.setCentralWidget(self._main_widget)
         self.show()
@@ -385,11 +406,18 @@ class MainWindow(QtWidgets.QMainWindow):
             self.context.gantry_offset
         )
         
+        # Store association
         self.associated.add(association.aris_basename)
         self.associated.add(association.gopro_basename)
         self.associated.add(association.gantry_basename)
         self.association_details[association.aris_basename] = association
         
+        # Update table
+        aris_idx = self.dropdown_select_aris.currentIndex()
+        self.table_associations.setItem(aris_idx, 1, QtWidgets.QTableWidgetItem(self.context.gopro_basename))
+        self.table_associations.setItem(aris_idx, 2, QtWidgets.QTableWidgetItem(self.context.gantry_basename))
+        
+        # Mark files as associated in dropdowns
         def next_unassociated(items, start = 0):
             for idx, f in enumerate(items[start:]):
                 if basename(f) not in self.associated:
