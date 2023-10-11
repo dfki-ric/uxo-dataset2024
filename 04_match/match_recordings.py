@@ -6,6 +6,7 @@ import yaml
 import numpy as np
 import pandas as pd
 import cv2
+from dataclasses import dataclass
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -42,6 +43,7 @@ class MatchingContext:
         self._aris_frame_idx = 0
         self._aris_frames_start = 0
         self._aris_frames_end = len(self.aris_frames) - 1
+        self.aris_motion_onset = 0
         self.aris_frames_total = len(self.aris_frames)
         self.aris_t0 = self.aris_meta.at[0, 'FrameTime']
         self.aris_duration = self.aris_meta.at[self.aris_frames_total - 1, 'FrameTime'] - self.aris_t0
@@ -53,7 +55,9 @@ class MatchingContext:
             print(f'Found save file for {self.aris_basename}')
             with open (marks_file_path, 'r') as f:
                 marks = yaml.safe_load(f)
-                self._aris_frames_start = max(0, marks.get('onset', 0))
+                onset = max(0, marks.get('onset', 0))
+                self._aris_frames_start = onset
+                self.aris_motion_onset = onset
         
         self.gopro_frame_idx = -1
         self.gopro_frames_total = self.gopro_clip.get(cv2.CAP_PROP_FRAME_COUNT)
@@ -140,6 +144,15 @@ class MatchingContext:
         return (xi, yi, zi), timepos
 
 
+@dataclass
+class Association:
+    aris_basename: str
+    gopro_basename: str
+    gantry_basename: str
+    aris_onset: int
+    gopro_offset: int
+    gantry_offset: float
+
 
 class MainWidget(QtWidgets.QWidget):
     keyPressed = QtCore.pyqtSignal(int)
@@ -192,7 +205,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, aris_data_dirs, gantry_files, gopro_files, out_file_path):
         super().__init__()
         
-        self.associated = {}
+        self.associated = set()
+        self.association_details = {}
         
         # Keep track of the files we're using
         self.aris_data_dirs = aris_data_dirs
@@ -213,29 +227,25 @@ class MainWindow(QtWidgets.QMainWindow):
         
         self.fig = Figure()
         self.gantry_plot = self.fig.add_subplot()
+        self.gantry_plot.figure.tight_layout()
         
         self.plot_canvas = FigureCanvas(self.fig)
         self.plot_canvas.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self.plot_canvas.updateGeometry()
         
         # UI controls
-        def mark_if_associated(name):
-            return f'{name} *' if name in self.associated else name
-        
         self.dropdown_select_aris = QtWidgets.QComboBox()
-        self.dropdown_select_aris.addItems([mark_if_associated(basename(f)) for f in self.aris_data_dirs])
         self.dropdown_select_aris.currentIndexChanged.connect(self.reload)
         self.dropdown_select_gopro = QtWidgets.QComboBox()
-        self.dropdown_select_gopro.addItems([mark_if_associated(basename(f)) for f in self.gopro_files])
         self.dropdown_select_gopro.currentIndexChanged.connect(self.reload)
         self.dropdown_select_gantry = QtWidgets.QComboBox()
-        self.dropdown_select_gantry.addItems([mark_if_associated(basename(f)) for f in self.gantry_files])
         self.dropdown_select_gantry.currentIndexChanged.connect(self.reload)
+        self.refresh_dropdowns()
         
         self.slider_aris_pos = MySlider()
-        self.slider_aris_pos.valueChanged[int].connect(self._handle_aris_offset_slider)
+        self.slider_aris_pos.valueChanged[int].connect(self._handle_aris_pos_slider)
         self.spinner_aris_pos = QtWidgets.QSpinBox()
-        self.spinner_aris_pos.valueChanged[int].connect(self._handle_aris_offset_spinner)
+        self.spinner_aris_pos.valueChanged[int].connect(self._handle_aris_pos_spinner)
         
         self.rangeslider_aris = QRangeSlider()
         self.rangeslider_aris.startValueChanged.connect(self._handle_aris_range_start_changed)
@@ -252,10 +262,10 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Buttons and instructions
         # TODO instructions
-        self.button_play_pause = QtWidgets.QPushButton('Play / Pause')
+        self.button_play_pause = QtWidgets.QPushButton('&Play / Pause')
         self.button_play_pause.clicked.connect(self._handle_play_pause_button)
         
-        self.button_associate = QtWidgets.QPushButton('Associate')
+        self.button_associate = QtWidgets.QPushButton('&Associate')
         self.button_associate.clicked.connect(self._handle_associate_button)
         
         # Layout
@@ -280,6 +290,7 @@ class MainWindow(QtWidgets.QMainWindow):
         ui_layout.addWidget(QtWidgets.QLabel(""))
         
         ui_layout.addWidget(self.button_play_pause)
+        ui_layout.addWidget(self.button_associate)
         
         ui_layout.addStretch()
 
@@ -299,23 +310,51 @@ class MainWindow(QtWidgets.QMainWindow):
         self.update_timer.start()
         
         self.reset_context()
-    
+        
+    def refresh_dropdowns(self):
+        def mark_if_associated(name):
+            return f'* {name}' if name in self.associated else name
+        
+        def repopulate(dropdown, items):
+            idx = max(0, dropdown.currentIndex())
+            dropdown.currentIndexChanged.disconnect()
+            dropdown.clear()
+            dropdown.addItems([mark_if_associated(basename(f)) for f in self.aris_data_dirs])
+            dropdown.setCurrentIndex(idx)
+            dropdown.currentIndexChanged.connect(self.reload)
+        
+        repopulate(self.dropdown_select_aris, self.aris_data_dirs)
+        repopulate(self.dropdown_select_gopro, self.gopro_files)
+        repopulate(self.dropdown_select_gantry, self.gantry_files)
+        
     def _handle_keypress(self, key):
-        if key == QtCore.Qt.Key.Key_Space:
-            self._handle_play_pause_button()
+        if key in [QtCore.Qt.Key.Key_Space, QtCore.Qt.Key.Key_P]:
+            self.button_play_pause.animateClick()
+        elif key == QtCore.Qt.Key.Key_A:
+            self.button_associate.animateClick()
         else:
             return
     
     @QtCore.pyqtSlot(int)
-    def _handle_aris_offset_slider(self, val):
+    def _handle_aris_pos_slider(self, val):
         self.context.aris_frame_idx = val
         self.spinner_aris_pos.setValue(val)
         self.ensure_update()
 
     @QtCore.pyqtSlot(int)
-    def _handle_aris_offset_spinner(self, val):
+    def _handle_aris_pos_spinner(self, val):
         self.context.aris_frame_idx = val
         self.slider_aris_pos.setValue(val)
+        self.ensure_update()
+
+    @QtCore.pyqtSlot(int)
+    def _handle_aris_range_start_changed(self, val):
+        self.context.aris_frames_start = val
+        self.ensure_update()
+    
+    @QtCore.pyqtSlot(int)
+    def _handle_aris_range_end_changed(self, val):
+        self.context.aris_frames_end = val
         self.ensure_update()
 
     @QtCore.pyqtSlot(int)
@@ -337,20 +376,35 @@ class MainWindow(QtWidgets.QMainWindow):
             self.update_timer.start()
 
     def _handle_associate_button(self):
+        association = Association(
+            self.context.aris_basename,
+            self.context.gopro_basename,
+            self.context.gantry_basename,
+            self.context.aris_motion_onset,
+            self.context.gopro_offset,
+            self.context.gantry_offset
+        )
         
-
-    @QtCore.pyqtSlot(int)
-    def _handle_aris_range_start_changed(self, val):
-        self.context.aris_frames_start = val
-        self.ensure_update()
-    
-    @QtCore.pyqtSlot(int)
-    def _handle_aris_range_end_changed(self, val):
-        self.context.aris_frames_end = val
-        self.ensure_update()
+        self.associated.add(association.aris_basename)
+        self.associated.add(association.gopro_basename)
+        self.associated.add(association.gantry_basename)
+        self.association_details[association.aris_basename] = association
+        
+        def next_unassociated(items, start = 0):
+            for idx, f in enumerate(items[start:]):
+                if basename(f) not in self.associated:
+                    return start + idx
+            return start
+        
+        self.dropdown_select_aris.setCurrentIndex(next_unassociated(self.aris_data_dirs))
+        self.dropdown_select_gopro.setCurrentIndex(next_unassociated(self.gopro_files))
+        self.dropdown_select_gantry.setCurrentIndex(next_unassociated(self.gantry_files))
+        
+        self.refresh_dropdowns()
 
     def reload(self):
-        self.context.reload = True
+        if self.context:
+            self.context.reload = True
 
     def reset_context(self):
         aris_file = self.aris_data_dirs[self.dropdown_select_aris.currentIndex()]
@@ -382,7 +436,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.gantry_plot.plot(gantry_data['t'], gantry_data['y'], 'g', label='y')
         self.gantry_plot.plot(gantry_data['t'], gantry_data['z'], 'b', label='z')
         self.gantry_offset_marker = self.gantry_plot.axvline(0, color='orange')
-        self.gantry_plot.figure.tight_layout()
         
         self.context.reload = False
 
