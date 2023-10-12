@@ -383,8 +383,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def _handle_associate_button(self):
         association = Association(
             self.dropdown_select_aris.currentIndex(),
-            self.dropdown_select_gantry.currentIndex(),
             self.dropdown_select_gopro.currentIndex(),
+            self.dropdown_select_gantry.currentIndex(),
             self.context.aris_motion_onset,
             self.context.gopro_offset,
             self.context.gantry_offset
@@ -405,7 +405,6 @@ class MainWindow(QtWidgets.QMainWindow):
                     old_association = a
                     break
         
-        # TODO either one set per file list or use names instead of numbers 
         if old_association is not None:
             self.aris_associated.discard(old_association.aris_idx)
             self.gopro_associated.discard(old_association.gopro_idx)
@@ -440,7 +439,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.refresh_dropdowns()
 
     def refresh_dropdowns(self):
-        # TODO marking doesn't quite work yet
         def mark_if_associated(name, idx, container):
             return f'* {name}' if idx in container else name
         
