@@ -42,9 +42,9 @@ class MatchingContext:
         self.aris_duration = self.aris_meta.at[self.aris_frames_total - 1, 'FrameTime'] - self.aris_t0
         self.aris_img = None
         
-        # Plot the gantry data - we will only adjust the offset of a marker
-        self.gantry_data['t'] = self.gantry_data['timestamp_s'] * 10e3 + self.gantry_data['timestamp_ns'] / 10e6
-        
+        # Create microsecond timestamps 
+        self.gantry_data['t'] = self.gantry_data['timestamp_s'] * 1e6 + self.gantry_data['timestamp_ns'] / 1e3
+
         # Load beginning of motion frame from save file
         marks_file_path = os.path.join(aris_dir, self.aris_basename + '_marks.yaml')
         if os.path.exists(marks_file_path):
@@ -114,15 +114,14 @@ class MatchingContext:
         # FrameTime = time of recording on PC (µs since 1970)
         # sonarTimeStamp = time of recording on sonar (µs since 1970), not sure if synchronized to PC time
         frametime = self.aris_meta.at[self.aris_frame_idx, 'FrameTime']
-        print(self.aris_t0)
         timeoffset = frametime - self.aris_t0
         if self.aris_img is None:
             self.aris_img = QtGui.QPixmap(self.aris_frames[self.aris_frame_idx])
         return self.aris_img, timeoffset
     
     def get_gopro_frame(self, aris_timeoffset):
-        # TODO aris frametime is in microseconds, then why does 10e3 seem correct???
-        new_frame_idx = int(aris_timeoffset / 10e3 // self.gopro_fps) + self.gopro_offset
+        # TODO aris frametime is in microseconds, then why does 1e3 seem correct???
+        new_frame_idx = int(aris_timeoffset / 1e3 // self.gopro_fps) + self.gopro_offset
         
         if new_frame_idx != self.gopro_frame_idx:
             self.gopro_frame_idx = new_frame_idx
@@ -137,9 +136,8 @@ class MatchingContext:
         
     def get_gantry_odom(self, aris_timeoffset):
         # ARIS and gantry data use absolute timestamps
-        timepos = ((self.aris_t0 + aris_timeoffset) / 10e6 + self.gantry_offset / 1000)
-        t = self.gantry_data['t']
-        print(timepos, t[0], t[t.shape[0]-1])
+        timepos = ((self.aris_t0 + aris_timeoffset) + self.gantry_offset / 1000)
+        t = self.gantry_data['t']   
         xi = np.interp(timepos, t, self.gantry_data['x'])
         yi = np.interp(timepos, t, self.gantry_data['y'])
         zi = np.interp(timepos, t, self.gantry_data['z'])
@@ -220,7 +218,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Everything else will be stored inside the context
         self.context = None
-        self.needs_update = False
+        self.dirty = False
         self.playing = autoplay
         
         # QT things
@@ -474,6 +472,12 @@ class MainWindow(QtWidgets.QMainWindow):
             dropdown.setCurrentIndex(idx)
             dropdown.currentIndexChanged.connect(self.reload)
         
+        # TODO mark ARIS files that have an onset in their metadata
+        # TODO filter GANTRY files that overlap with the selected ARIS timerange
+        # TODO use relative GANTRY playback
+        # TODO read GANTRY offsets from metadata 
+        # TODO regenerate GANTRY metadata
+        
         repopulate(self.dropdown_select_aris, self.aris_data_dirs, self.aris_associated)
         repopulate(self.dropdown_select_gopro, self.gopro_files, self.gopro_associated)
         repopulate(self.dropdown_select_gantry, self.gantry_files, self.gantry_associated)
@@ -513,10 +517,10 @@ class MainWindow(QtWidgets.QMainWindow):
         # But we can also delay playback so much that it barely starts playing
         range_max = int(self.context.gopro_frames_total)
         
-        self.slider_aris_pos.setMaximum(self.context.aris_frames_total - 1)
-        self.spinner_aris_pos.setMaximum(self.context.aris_frames_total - 1)
-        self.slider_gopro_pos.setMaximum(self.context.gopro_frames_total - 1)
-        self.spinner_gopro_pos.setMaximum(self.context.gopro_frames_total - 1)
+        self.slider_aris_pos.setMaximum(int(self.context.aris_frames_total - 1))
+        self.spinner_aris_pos.setMaximum(int(self.context.aris_frames_total - 1))
+        self.slider_gopro_pos.setMaximum(int(self.context.gopro_frames_total - 1))
+        self.spinner_gopro_pos.setMaximum(int(self.context.gopro_frames_total - 1))
         self.slider_gantry_pos.setMaximum(1000)
         self.spinner_gantry_pos.setMaximum(1000)
         
@@ -536,6 +540,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.gantry_plot.plot(gantry_t_rel, gantry_data['y'], 'g', label='y')
         self.gantry_plot.plot(gantry_t_rel, gantry_data['z'], 'b', label='z')
         self.gantry_offset_marker = self.gantry_plot.axvline(0, color='orange')
+        self.plot_canvas.setStyleSheet('background-color:none;')  # TODO not working yet
         
         self.context.reload = False
 
@@ -545,10 +550,13 @@ class MainWindow(QtWidgets.QMainWindow):
             self.ensure_update()
 
     def ensure_update(self):
-        self.needs_update = True
+        self.dirty = True
+        
+    def needs_update(self):
+        return self.playing or self.context is None or self.dirty
 
     def do_update(self):
-        if not self.playing and not self.needs_update:
+        if not self.needs_update():
             return
         
         if not self.context or self.context.reload:
@@ -573,15 +581,15 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Gantry
         gantry_odom, gantry_time = self.context.get_gantry_odom(aris_timeoffset)
-        gantry_progress = int(gantry_time / (self.context.gantry_t0 + self.context.gantry_duration) * 1000)
-        # TODO seems to be wrong
+        gantry_progress = int((gantry_time - self.context.gantry_t0) / self.context.gantry_duration * 1000)
+        # TODO warn if outside range, i.e. timestamps don't match 
         print(gantry_progress)
         self.gantry_offset_marker.set_xdata([gantry_time, gantry_time])
         self.slider_gantry_pos.setValue(gantry_progress)
         self.spinner_gantry_pos.setValue(gantry_progress)
 
         self.fig.canvas.draw_idle()
-        self.needs_update = False
+        self.dirty = False
     
 
 
