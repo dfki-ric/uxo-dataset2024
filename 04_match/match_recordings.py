@@ -32,13 +32,6 @@ class MatchingContext:
         self.gantry_data = pd.read_csv(gantry_file)
         self.gopro_clip = cv2.VideoCapture(gopro_file)
         
-        # Plot the gantry data - we will only adjust the offset of a marker
-        self.gantry_t0_s = self.gantry_data.at[0, 'timestamp_s']
-        self.gantry_t0_ns = self.gantry_data.at[0, 'timestamp_ns']
-        self.gantry_data['timestamp_s'] -= self.gantry_t0_s
-        self.gantry_data['timestamp_ns'] -= self.gantry_t0_ns
-        self.gantry_data['t'] = self.gantry_data['timestamp_s'] + self.gantry_data['timestamp_ns'] / 10e9
-        
         # Start at -1, this way the first call to tick() will move it to 0
         self._aris_frame_idx = 0
         self._aris_frames_start = 0
@@ -48,6 +41,9 @@ class MatchingContext:
         self.aris_t0 = self.aris_meta.at[0, 'FrameTime']
         self.aris_duration = self.aris_meta.at[self.aris_frames_total - 1, 'FrameTime'] - self.aris_t0
         self.aris_img = None
+        
+        # Plot the gantry data - we will only adjust the offset of a marker
+        self.gantry_data['t'] = self.gantry_data['timestamp_s'] * 10e3 + self.gantry_data['timestamp_ns'] / 10e6
         
         # Load beginning of motion frame from save file
         marks_file_path = os.path.join(aris_dir, self.aris_basename + '_marks.yaml')
@@ -66,7 +62,8 @@ class MatchingContext:
         self.gopro_img = None
         
         self.gantry_offset = 0.
-        self.gantry_duration = self.gantry_data.at[self.gantry_data.shape[0] - 1, 't']
+        self.gantry_t0 = self.gantry_data.at[0, 't']
+        self.gantry_duration = self.gantry_data.at[self.gantry_data.shape[0] - 1, 't'] - self.gantry_t0
         
         self.reload = True
         
@@ -80,6 +77,7 @@ class MatchingContext:
             self._aris_frame_idx = new_val
         else:
             self._aris_frame_idx = self.aris_frames_start
+        self.aris_img = None
     
     @property
     def aris_frames_start(self):
@@ -113,16 +111,18 @@ class MatchingContext:
         self.aris_frame_idx += 1
         
     def get_aris_frame(self):
-        # FrameTime = time of recording on PC (ms since 1970)
-        # sonarTimeStamp = time of recording on sonar (ms since 1970), not sure if synchronized to PC time
-        frametime = self.aris_meta.at[self.aris_frame_idx, 'FrameTime'] - self.aris_t0
+        # FrameTime = time of recording on PC (µs since 1970)
+        # sonarTimeStamp = time of recording on sonar (µs since 1970), not sure if synchronized to PC time
+        frametime = self.aris_meta.at[self.aris_frame_idx, 'FrameTime']
+        print(self.aris_t0)
+        timeoffset = frametime - self.aris_t0
         if self.aris_img is None:
             self.aris_img = QtGui.QPixmap(self.aris_frames[self.aris_frame_idx])
-        return self.aris_img, frametime
+        return self.aris_img, timeoffset
     
-    def get_gopro_frame(self, aris_frametime):
-        new_timepos = aris_frametime
-        new_frame_idx = int(new_timepos / 10e3 // self.gopro_fps) + self.gopro_offset
+    def get_gopro_frame(self, aris_timeoffset):
+        # TODO aris frametime is in microseconds, then why does 10e3 seem correct???
+        new_frame_idx = int(aris_timeoffset / 10e3 // self.gopro_fps) + self.gopro_offset
         
         if new_frame_idx != self.gopro_frame_idx:
             self.gopro_frame_idx = new_frame_idx
@@ -135,9 +135,11 @@ class MatchingContext:
         
         return self.gopro_img, self.gopro_frame_idx
         
-    def get_gantry_odom(self, aris_frametime):
-        timepos = (aris_frametime + self.gantry_offset) / 10e3
+    def get_gantry_odom(self, aris_timeoffset):
+        # ARIS and gantry data use absolute timestamps
+        timepos = ((self.aris_t0 + aris_timeoffset) / 10e6 + self.gantry_offset / 1000)
         t = self.gantry_data['t']
+        print(timepos, t[0], t[t.shape[0]-1])
         xi = np.interp(timepos, t, self.gantry_data['x'])
         yi = np.interp(timepos, t, self.gantry_data['y'])
         zi = np.interp(timepos, t, self.gantry_data['z'])
@@ -202,7 +204,7 @@ class MySlider(QtWidgets.QSlider):
 
 
 class MainWindow(QtWidgets.QMainWindow):
-    def __init__(self, aris_data_dirs, gantry_files, gopro_files, out_file_path):
+    def __init__(self, aris_data_dirs, gantry_files, gopro_files, out_file_path, autoplay=False):
         super().__init__()
         
         self.aris_associated = set()
@@ -218,6 +220,8 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Everything else will be stored inside the context
         self.context = None
+        self.needs_update = False
+        self.playing = autoplay
         
         # QT things
         self._main_widget = MainWidget(self)
@@ -253,14 +257,27 @@ class MainWindow(QtWidgets.QMainWindow):
         self.rangeslider_aris.startValueChanged.connect(self._handle_aris_range_start_changed)
         self.rangeslider_aris.endValueChanged.connect(self._handle_aris_range_end_changed)
         
-        # Offset sliders and spinners
+        # Gopro sliders and spinners
         self.slider_gopro_pos = MySlider()
-        self.slider_gopro_pos.setSingleStep(1)
-        self.slider_gopro_pos.setPageStep(10)
-        self.slider_gopro_pos.valueChanged[int].connect(self._handle_gopro_offset_slider)
+        self.slider_gopro_pos.setEnabled(False)
         self.spinner_gopro_pos = QtWidgets.QSpinBox()
-        self.spinner_gopro_pos.setSingleStep(1)
-        self.spinner_gopro_pos.valueChanged.connect(self._handle_gopro_offset_spinner)
+        self.spinner_gopro_pos.setEnabled(False)
+        
+        self.slider_gopro_offset = MySlider()
+        self.slider_gopro_offset.setSingleStep(1)
+        self.slider_gopro_offset.setPageStep(10)
+        self.slider_gopro_offset.valueChanged[int].connect(self._handle_gopro_offset_slider)
+        self.spinner_gopro_offset = QtWidgets.QSpinBox()
+        self.spinner_gopro_offset.setSingleStep(1)
+        self.spinner_gopro_offset.valueChanged.connect(self._handle_gopro_offset_spinner)
+        
+        # TODO Gantry sliders and spinners
+        self.slider_gantry_pos = MySlider()
+        self.slider_gantry_pos.setMaximum(1000)
+        self.slider_gantry_pos.setEnabled(False)
+        self.spinner_gantry_pos = QtWidgets.QSpinBox()
+        self.spinner_gantry_pos.setMaximum(1000)
+        self.spinner_gantry_pos.setEnabled(False)
         
         # Buttons and instructions
         # TODO instructions
@@ -288,9 +305,19 @@ class MainWindow(QtWidgets.QMainWindow):
         ui_layout.addWidget(self.slider_aris_pos)
         ui_layout.addWidget(self.spinner_aris_pos)
         ui_layout.addWidget(self.rangeslider_aris)
-        ui_layout.addWidget(QtWidgets.QLabel("GoPro Offset"))
+        
+        ui_layout.addWidget(QtWidgets.QLabel(""))
+        ui_layout.addWidget(QtWidgets.QLabel("GoPro Frame"))
         ui_layout.addWidget(self.slider_gopro_pos)
         ui_layout.addWidget(self.spinner_gopro_pos)
+        ui_layout.addWidget(QtWidgets.QLabel("GoPro Offset"))
+        ui_layout.addWidget(self.slider_gopro_offset)
+        ui_layout.addWidget(self.spinner_gopro_offset)
+        
+        ui_layout.addWidget(QtWidgets.QLabel(""))
+        ui_layout.addWidget(QtWidgets.QLabel("Gantry Progress"))
+        ui_layout.addWidget(self.slider_gantry_pos)
+        ui_layout.addWidget(self.spinner_gantry_pos)
         
         ui_layout.addWidget(QtWidgets.QLabel(""))
         
@@ -330,15 +357,15 @@ class MainWindow(QtWidgets.QMainWindow):
         #self.layout.setColumnStretch(4, 100)
 
         self.setCentralWidget(self._main_widget)
-        self.show()
         
         # Update in regular intervals
         self.update_timer = QtCore.QTimer()
-        self.update_timer.timeout.connect(self.step)
+        self.update_timer.timeout.connect(self.do_update)
         self.update_timer.setInterval(1000 // 15)  # TODO make configurable
         self.update_timer.start()
         
         self.reset_context()
+        self.show()
     
     @QtCore.pyqtSlot(int)
     def _handle_aris_pos_slider(self, val):
@@ -365,20 +392,17 @@ class MainWindow(QtWidgets.QMainWindow):
     @QtCore.pyqtSlot(int)
     def _handle_gopro_offset_slider(self, val):
         self.context.gopro_offset = val
-        self.spinner_gopro_pos.setValue(val)
+        self.spinner_gopro_offset.setValue(val)
         self.ensure_update()
     
     @QtCore.pyqtSlot(int)
     def _handle_gopro_offset_spinner(self, val):
         self.context.gopro_offset = val
-        self.slider_gopro_pos.setValue(val)
+        self.slider_gopro_offset.setValue(val)
         self.ensure_update()
 
     def _handle_play_pause_button(self):
-        if self.update_timer.isActive():
-            self.update_timer.stop()
-        else:
-            self.update_timer.start()
+        self.playing = not self.playing
 
     def _handle_associate_button(self):
         association = Association(
@@ -476,10 +500,6 @@ class MainWindow(QtWidgets.QMainWindow):
             writer.writeheader()
             writer.writerows(asdict(a) for a in self.association_details)
 
-    def reload(self):
-        if self.context:
-            self.context.reload = True
-
     def reset_context(self):
         aris_file = self.aris_data_dirs[self.dropdown_select_aris.currentIndex()]
         gantry_file = self.gantry_files[self.dropdown_select_gantry.currentIndex()]
@@ -495,8 +515,13 @@ class MainWindow(QtWidgets.QMainWindow):
         
         self.slider_aris_pos.setMaximum(self.context.aris_frames_total - 1)
         self.spinner_aris_pos.setMaximum(self.context.aris_frames_total - 1)
-        self.slider_gopro_pos.setRange(range_min, range_max)
-        self.spinner_gopro_pos.setRange(range_min, range_max)
+        self.slider_gopro_pos.setMaximum(self.context.gopro_frames_total - 1)
+        self.spinner_gopro_pos.setMaximum(self.context.gopro_frames_total - 1)
+        self.slider_gantry_pos.setMaximum(1000)
+        self.spinner_gantry_pos.setMaximum(1000)
+        
+        self.slider_gopro_offset.setRange(range_min, range_max)
+        self.spinner_gopro_offset.setRange(range_min, range_max)
         
         self.rangeslider_aris.setMin(0)
         self.rangeslider_aris.setMax(self.context.aris_frames_total - 1)
@@ -505,44 +530,58 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Prepare the gantry plot. As we update, we will only move the vertical line marker across.
         gantry_data = self.context.gantry_data
-        self.gantry_plot.set_xlim([0, gantry_data['t'].iloc[-1]])
-        self.gantry_plot.plot(gantry_data['t'], gantry_data['x'], 'r', label='x')
-        self.gantry_plot.plot(gantry_data['t'], gantry_data['y'], 'g', label='y')
-        self.gantry_plot.plot(gantry_data['t'], gantry_data['z'], 'b', label='z')
+        self.gantry_plot.set_xlim([0, self.context.gantry_duration])
+        gantry_t_rel = gantry_data['t'] - self.context.gantry_t0
+        self.gantry_plot.plot(gantry_t_rel, gantry_data['x'], 'r', label='x')
+        self.gantry_plot.plot(gantry_t_rel, gantry_data['y'], 'g', label='y')
+        self.gantry_plot.plot(gantry_t_rel, gantry_data['z'], 'b', label='z')
         self.gantry_offset_marker = self.gantry_plot.axvline(0, color='orange')
         
         self.context.reload = False
 
-    def step(self):
-        self.context.tick()
-        self.do_update()
+    def reload(self):
+        if self.context:
+            self.context.reload = True
+            self.ensure_update()
 
     def ensure_update(self):
-        if not self.update_timer.isActive():
-            self.do_update()
+        self.needs_update = True
 
     def do_update(self):
+        if not self.playing and not self.needs_update:
+            return
+        
         if not self.context or self.context.reload:
             self.reset_context()
+            
+        if self.playing:
+            self.context.tick()
         
         # ARIS
-        aris_frame, aris_frametime = self.context.get_aris_frame()
+        aris_frame, aris_timeoffset = self.context.get_aris_frame()
         self.slider_aris_pos.setValue(self.context.aris_frame_idx)
         self.aris_canvas.setPixmap(aris_frame)
         
         # GoPro
-        gopro_frame, gopro_frame_idx = self.context.get_gopro_frame(aris_frametime)
+        gopro_frame, gopro_frame_idx = self.context.get_gopro_frame(aris_timeoffset)
         if gopro_frame:
             self.gopro_canvas.setPixmap(gopro_frame)
+            self.slider_gopro_pos.setValue(gopro_frame_idx)
+            self.spinner_gopro_pos.setValue(gopro_frame_idx)
         else:
-            print(f'no gopro frame for {aris_frametime}, this may be a bug')
+            print(f'no gopro frame for {aris_timeoffset}, this may be a bug')
 
         # Gantry
-        gantry_odom, gantry_time = self.context.get_gantry_odom(aris_frametime)
+        gantry_odom, gantry_time = self.context.get_gantry_odom(aris_timeoffset)
+        gantry_progress = int(gantry_time / (self.context.gantry_t0 + self.context.gantry_duration) * 1000)
         # TODO seems to be wrong
+        print(gantry_progress)
         self.gantry_offset_marker.set_xdata([gantry_time, gantry_time])
+        self.slider_gantry_pos.setValue(gantry_progress)
+        self.spinner_gantry_pos.setValue(gantry_progress)
 
         self.fig.canvas.draw_idle()
+        self.needs_update = False
     
 
 
