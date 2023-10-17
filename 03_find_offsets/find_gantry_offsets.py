@@ -3,47 +3,45 @@ import sys
 import os
 import csv
 import numpy as np
-import rosbag
+import pandas as pd
 
 
 def usage():
-    print(f'{sys.argv[0]} <rosbag_folder> <output-file.csv>')
+    print(f'{sys.argv[0]} <gantry_extraction_folder>')
 
 
-# TODO return start, onset and end instead
-def find_motion_onset(bag_file):    
-    bag = rosbag.Bag(bag_file)
-    prev_msg = None
+def find_motion_onset(csv_file):
+    data = pd.read_csv(csv_file)
+    data['diff'] = (data['x'].shift() != data['x']) | (data['y'].shift() != data['y'])
+    onset_idx = data['diff'].idxmax()
     
-    for _, msg, _ in bag.read_messages('/odom'):
-        if prev_msg:
-            if    not np.isclose(msg.pose.pose.position.x, prev_msg.pose.pose.position.x) \
-               or not np.isclose(msg.pose.pose.position.y, prev_msg.pose.pose.position.y):
-                stamp = prev_msg.header.stamp
-                return stamp.secs, stamp.nsecs
-        
-        prev_msg = msg
-        
-    return -1, 0
+    onset = data['timestamp_us'].iloc[onset_idx]
+    start = data['timestamp_us'].iloc[0]
+    end = data['timestamp_us'].iloc[-1]
+    
+    return start, end, onset
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 2:
         usage()
         raise RuntimeError('Wrong number of arguments')
     
-    bag_dir_path = sys.argv[1]
-    out_file_path = sys.argv[2]
+    csv_dir_path = sys.argv[1]
+    out_file_path = os.path.join(csv_dir_path, 'gantry_metadata.csv')
     
     with open(out_file_path, 'w') as out_file:
-        writer = csv.writer(out_file, delimiter=';')
-        writer.writerow(['file', 'onset_s', 'onset_ns'])
+        writer = csv.writer(out_file)
+        writer.writerow(['file', 'start_us', 'end_us', 'onset_us'])
         
-        for bag_file in sorted(os.listdir(bag_dir_path)):
-            if not bag_file.lower().endswith('.bag'):
+        for csv_file in sorted(os.listdir(csv_dir_path)):
+            if not csv_file.lower().endswith('.csv'):
                 continue
             
-            print(f'{bag_file} ... ', end='')
-            onset_s, onset_ns = find_motion_onset(os.path.join(bag_dir_path, bag_file))
-            print(onset_s)
-            writer.writerow([bag_file, onset_s, onset_ns])
+            if csv_file == 'gantry_metadata.csv':
+                continue
+            
+            print(f'{csv_file} ... ', end='')
+            start, end, onset = find_motion_onset(os.path.join(csv_dir_path, csv_file))
+            print(onset / 1e6)
+            writer.writerow([csv_file, start, end, onset])

@@ -9,6 +9,10 @@ def usage():
     print(f'{sys.argv[0]} <rosbags-dir> <output-dir>')
 
 
+def stamp_to_microseconds(stamp):
+    return int(stamp.secs * 1e6) + int(stamp.nsecs // 1e3)
+
+
 def extract_bag(bag_file, out_dir_path):
     basename = os.path.splitext(os.path.basename(bag_file))[0]
     bag = rosbag.Bag(bag_file)
@@ -17,15 +21,16 @@ def extract_bag(bag_file, out_dir_path):
         writer = csv.writer(out_file)
         
         # Header
-        writer.writerow(['timestamp_s', 'timestamp_ns', 'x', 'y', 'z'])
+        writer.writerow(['timestamp_us', 'x', 'y', 'z'])
         
         for _, msg, _ in bag.read_messages('/odom'):
             stamp = msg.header.stamp
+            t = stamp_to_microseconds(stamp)
             x = msg.pose.pose.position.x
             y = msg.pose.pose.position.y
             z = msg.pose.pose.position.z
             
-            writer.writerow([stamp.secs, stamp.nsecs, x, y, z])
+            writer.writerow([t, x, y, z])
 
     
 if __name__ == '__main__':
