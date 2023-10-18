@@ -27,11 +27,14 @@ def get_aris_metadata(aris_data_dir):
         return _aris_metadata_cache[aris_data_dir]
     
     aris_basename = basename(aris_data_dir)
-    file_meta = yaml.load(os.path.join(aris_data_dir, aris_basename + '_meta.yaml'))
+    with open(os.path.join(aris_data_dir, aris_basename + '_metadata.yaml'), 'r') as f:
+        file_meta = yaml.safe_load(f)
+    
     frame_meta = pd.read_csv(os.path.join(aris_data_dir, aris_basename + '_frames.csv'))
     
     try:
-        marks_meta = yaml.load(os.path.join(aris_data_dir, aris_basename + '_marks.yaml'))
+        with open(os.path.join(aris_data_dir, aris_basename + '_marks.yaml'), 'r') as f:
+            marks_meta = yaml.safe_load(f)
     except IOError:
         marks_meta = None
     
@@ -50,15 +53,15 @@ def get_gantry_metadata(gantry_files_dir):
 
 
 class MatchingContext:
-    def __init__(self, aris_dir, gantry_file, gopro_file):
+    def __init__(self, aris_dir, gopro_file, gantry_file):
         self.aris_basename = basename(aris_dir)
-        self.gantry_basename = basename(gantry_file)
         self.gopro_basename = basename(gopro_file)
+        self.gantry_basename = basename(gantry_file)
         
-        self.aris_frames_meta, self.aris_file_meta, self.aris_marks_meta = get_aris_metadata(aris_dir)
+        self.aris_file_meta, self.aris_frames_meta, self.aris_marks_meta = get_aris_metadata(aris_dir)
         self.aris_frames = sorted(os.path.join(aris_dir, f) for f in os.listdir(aris_dir) if f.lower().endswith('.pgm'))
-        self.gantry_data = pd.read_csv(gantry_file)
         self.gopro_clip = cv2.VideoCapture(gopro_file)
+        self.gantry_data = pd.read_csv(gantry_file)
         
         # Start at -1, this way the first call to tick() will move it to 0
         self._aris_frame_idx = 0
@@ -74,7 +77,7 @@ class MatchingContext:
         if self.aris_marks_meta:
             print(f'Found save file for {self.aris_basename}')
             if 'onset' in self.aris_marks_meta:
-                onset = max(0, self.aris_marks_meta[0])
+                onset = max(0, self.aris_marks_meta['onset'])
                 self._aris_start_frame = onset
                 self.aris_motion_onset = onset
         
@@ -86,7 +89,7 @@ class MatchingContext:
         
         self.gantry_offset = 0.
         self.gantry_t0 = self.gantry_data.at[0, 'timestamp_us']
-        self.gantry_duration = self.gantry_data.at[self.gantry_data.shape[0] - 1, 'timestamp_us'] - self.gantry_t0
+        self.gantry_duration = self.gantry_data['timestamp_us'].iloc[-1] - self.gantry_t0
         
         self.reload = True
         
@@ -231,7 +234,7 @@ class MySlider(QtWidgets.QSlider):
 
 
 class MainWindow(QtWidgets.QMainWindow):
-    def __init__(self, aris_data_dirs, gantry_files, gopro_files, out_file_path, autoplay=False):
+    def __init__(self, aris_base_dir, gopro_base_dir, gantry_base_dir, out_file_path, autoplay=False):
         super().__init__()
         
         self.aris_associated = set()
@@ -240,10 +243,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.association_details = {}
         
         # Keep track of the files we're using
-        self.aris_data_dirs = aris_data_dirs
-        self.gantry_files = gantry_files
-        self.gopro_files = gopro_files
+        self.aris_base_dir = aris_base_dir
+        self.gopro_base_dir = gopro_base_dir
+        self.gantry_base_dir = gantry_base_dir
         self.out_file_path = out_file_path
+        
+        self.aris_data_dirs = sorted(os.path.join(aris_base_dir, f) for f in os.listdir(aris_base_dir))
+        self.gopro_files = sorted(os.path.join(gopro_base_dir, f) for f in os.listdir(gopro_base_dir) if f.lower().endswith('.mp4'))
+        self.gantry_files = sorted(os.path.join(gantry_base_dir, f) for f in os.listdir(gantry_base_dir) if f.lower().endswith('.csv') and not 'metadata' in f.lower())
         
         # Everything else will be stored inside the context
         self.context = None
@@ -362,6 +369,8 @@ class MainWindow(QtWidgets.QMainWindow):
         ui_layout.addWidget(QtWidgets.QLabel("Gantry Progress"))
         ui_layout.addWidget(self.slider_gantry_pos)
         ui_layout.addWidget(self.spinner_gantry_pos)
+        
+        # TODO add gantry offset
         
         ui_layout.addStretch()
 
@@ -539,31 +548,36 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def refresh_dropdowns(self):
         aris_items = []
-        current_aris_meta = None
+        aris_frames_meta = None
+        aris_selected_idx = max(0, self.dropdown_select_aris.currentIndex())
         for idx,item in enumerate(self.aris_data_dirs):
-            metadata = get_aris_metadata(item)
-            marks = metadata[2]
-            if idx == self.dropdown_select_aris.currentIndex():
-                current_aris_meta = metadata
+            aris_metadata = get_aris_metadata(item)
+            marks = aris_metadata[2]
+            if idx == aris_selected_idx:
+                aris_frames_meta = aris_metadata[1]
             associated = '*' if idx in self.aris_associated else ' '
             motion_onset = 'm' if 'onset' in marks else ' '
             aris_items.append(f'({associated}) ({motion_onset}) {item}')
         
         gopro_items = []
+        #gopro_selected_idx = max(0, self.dropdown_select_gopro.currentIndex())
         for idx,item in enumerate(self.gopro_files):
             associated = '*' if idx in self.gopro_associated else ' '
             # GoPro clips are already cut to where the motion starts
             gopro_items.append(f'({associated}) {item}')
-            
+        
         gantry_items = []
-        gantry_meta = get_gantry_metadata(self.gantry_files)
-        current_aris_start = current_aris_meta[1]['FrameTime'][0]
-        current_aris_end = current_aris_meta[1]['FrameTime'][-1]
+        gantry_metadata = get_gantry_metadata(self.gantry_base_dir)
+        current_aris_start = aris_frames_meta['FrameTime'][0]
+        current_aris_end = aris_frames_meta['FrameTime'].iloc[-1]
+        #gantry_selected_idx = max(0, self.dropdown_select_gantry.currentIndex())
         for idx,item in enumerate(self.gantry_files):
-            metadata = gantry_meta.iloc[idx]
+            gantry_file_meta = gantry_metadata.iloc[idx]
+            gantry_file_start = gantry_file_meta['start_us']
+            gantry_file_end = gantry_file_meta['end_us']
             associated = '*' if idx in self.gantry_associated else ' '
             # mark gantry files which have timestamps overlapping with selected ARIS file
-            overlapping = 'x' if metadata['start'] < current_aris_end and metadata['end'] > current_aris_start else ' '
+            overlapping = 'x' if gantry_file_start < current_aris_end and gantry_file_end > current_aris_start else ' '
             gantry_items.append(f'({associated}) ({overlapping}) {item}')
         
         def repopulate(dropdown, items):
@@ -601,11 +615,13 @@ class MainWindow(QtWidgets.QMainWindow):
             writer.writerows(asdict(a) for a in self.association_details)
 
     def reset_context(self):
-        aris_file = self.aris_data_dirs[self.dropdown_select_aris.currentIndex()]
-        gantry_file = self.gantry_files[self.dropdown_select_gantry.currentIndex()]
-        gopro_file = self.gopro_files[self.dropdown_select_gopro.currentIndex()]
+        self.refresh_dropdowns()
         
-        self.context = MatchingContext(aris_file, gantry_file, gopro_file)
+        aris_file = self.aris_data_dirs[self.dropdown_select_aris.currentIndex()]
+        gopro_file = self.gopro_files[self.dropdown_select_gopro.currentIndex()]
+        gantry_file = self.gantry_files[self.dropdown_select_gantry.currentIndex()]
+        
+        self.context = MatchingContext(aris_file, gopro_file, gantry_file)
         self.gantry_plot.cla()
         
         # We can skip so much of the gopro clip that it barely starts playing
@@ -630,8 +646,8 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Prepare the gantry plot. As we update, we will only move the vertical line marker across.
         gantry_data = self.context.gantry_data
-        self.gantry_plot.set_xlim([0, self.context.gantry_duration])
-        gantry_t = gantry_data['timestamp_us']
+        #self.gantry_plot.set_xlim([0, self.context.gantry_duration])
+        gantry_t = gantry_data['timestamp_us'] - self.context.gantry_t0
         self.gantry_plot.plot(gantry_t, gantry_data['x'], 'r', label='x')
         self.gantry_plot.plot(gantry_t, gantry_data['y'], 'g', label='y')
         self.gantry_plot.plot(gantry_t, gantry_data['z'], 'b', label='z')
@@ -657,7 +673,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
         if not self.context or self.context.reload:
             self.reset_context()
-            
+        
         if self.playing:
             self.context.tick()
         
@@ -679,10 +695,10 @@ class MainWindow(QtWidgets.QMainWindow):
         gantry_odom, gantry_time = self.context.get_gantry_odom(aris_frametime)
         gantry_progress = int((gantry_time - self.context.gantry_t0) / self.context.gantry_duration * 1000)
         print(gantry_progress)
-        self.gantry_offset_marker.set_xdata([gantry_time, gantry_time])
+        self.gantry_offset_marker.set_xdata([gantry_time - self.context.gantry_t0, gantry_time - self.context.gantry_t0])
         self.slider_gantry_pos.setValue(gantry_progress)
         self.spinner_gantry_pos.setValue(gantry_progress)
-
+        
         self.fig.canvas.draw_idle()
         self.dirty = False
     
@@ -690,21 +706,17 @@ class MainWindow(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     # TODO
-    sys.argv = [sys.argv[0], 'matched_data/data/aris/day1/', 'matched_data/data/gantry/day1/', 'matched_data/data/gopro/day1/clips_sd/', 'out.csv']
+    sys.argv = [sys.argv[0], 'data/aris/day1/', 'data/gantry/day1/', 'data/gopro/day1/clips_sd/', 'out.csv']
     
     if len(sys.argv) != 5:
         usage()
         raise RuntimeError('Wrong number of arguments')
     
     aris_dir_path = sys.argv[1]
-    gantry_dir_path = sys.argv[2]
     gopro_dir_path = sys.argv[3]
+    gantry_dir_path = sys.argv[2]
     out_file_path = sys.argv[4]
     
-    aris_data_dirs = sorted(os.path.join(aris_dir_path, f) for f in os.listdir(aris_dir_path))
-    gantry_files = sorted(os.path.join(gantry_dir_path, f) for f in os.listdir(gantry_dir_path) if f.lower().endswith('.csv'))
-    gopro_files = sorted(os.path.join(gopro_dir_path, f) for f in os.listdir(gopro_dir_path) if f.lower().endswith('.mp4'))
-    
     app = QtWidgets.QApplication(sys.argv)
-    main = MainWindow(aris_data_dirs, gantry_files, gopro_files, out_file_path)
+    main = MainWindow(aris_dir_path, gopro_dir_path, gantry_dir_path, out_file_path)
     sys.exit(app.exec_())
