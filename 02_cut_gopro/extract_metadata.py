@@ -28,7 +28,7 @@ if __name__ == '__main__':
     
     with open(args.out_file_path, 'w') as out_file:
         writer = csv.writer(out_file)
-        writer.writerow(['file', 'creation_time', 'start', 'end'])
+        writer.writerow(['file', 'creation_time', 'original_start', 'original_end'])
         
         for gopro_file in sorted(os.listdir(args.gopro_dir_path)):
             if not gopro_file.lower().endswith('.mp4'):
@@ -50,4 +50,4 @@ if __name__ == '__main__':
             creation_time = metadata['format']['tags']['creation_time']
             
             for idx,stamp in enumerate(timestamps):
-                writer.writerow([f'{gopro_basename}_{idx+1:02}.MP4', creation_time, stamp.start, stamp.stop])
+                writer.writerow([f'{gopro_basename}_{idx+1:02}.mp4', creation_time, stamp.start, stamp.stop])

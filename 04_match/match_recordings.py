@@ -6,6 +6,8 @@ import yaml
 import numpy as np
 import pandas as pd
 import cv2
+import datetime as dt
+import pytz
 from dataclasses import dataclass, asdict
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -20,11 +22,28 @@ def usage():
 def basename(s):
     return os.path.split(s)[-1]
 
+def gopro_sorting_key(filename):
+    base = os.path.splitext(basename(filename))[0]
+    #prefix = base[:2]   # GX
+    chapter = base[2:4]  # 01
+    vid = base[4:8]      # 0010
+    clip = base[9:11]    # _01
+    return f'{vid}{chapter}{clip}'
+
 def split_microseconds(timestamp_us):
     s = int(timestamp_us // 1e6)
     ms = int((timestamp_us - s * 1e6) // 1e3)
     us = int(timestamp_us - s * 1e6 - ms * 1e3)
     return s, ms, us
+
+def parse_gopro_datetime(dt_string):
+    return dt.datetime.fromisoformat(dt_string.replace('Z', '+00:00'))
+
+def parse_gopro_timestamp(t_string):
+    m, rest = t_string.split(':')
+    s, ms = rest.split('.')
+    return int(m) * 60 + int(s) + float(ms) / 1000
+
 
 _aris_metadata_cache = {}
 def get_aris_metadata(aris_data_dir):
@@ -47,6 +66,16 @@ def get_aris_metadata(aris_data_dir):
     return file_meta, frame_meta, marks_meta
 
 
+_gopro_metadata_cache = {}
+def get_gopro_metadata(gopro_files_dir):
+    if gopro_files_dir in _gopro_metadata_cache:
+        return _gopro_metadata_cache[gopro_files_dir]
+    
+    metadata = pd.read_csv(os.path.join(gopro_files_dir, 'gopro_metadata.csv'))
+    _gopro_metadata_cache[gopro_files_dir] = metadata
+    return metadata
+
+
 _gantry_metadata_cache = {}
 def get_gantry_metadata(gantry_files_dir):
     if gantry_files_dir in _gantry_metadata_cache:
@@ -63,12 +92,9 @@ class MatchingContext:
         self.gopro_basename = basename(gopro_file)
         self.gantry_basename = basename(gantry_file)
         
+        # Load ARIS data
         self.aris_file_meta, self.aris_frames_meta, self.aris_marks_meta = get_aris_metadata(aris_dir)
         self.aris_frames = sorted(os.path.join(aris_dir, f) for f in os.listdir(aris_dir) if f.lower().endswith('.pgm'))
-        self.gopro_clip = cv2.VideoCapture(gopro_file)
-        self.gantry_data = pd.read_csv(gantry_file)
-        
-        # Start at -1, this way the first call to tick() will move it to 0
         self._aris_frame_idx = 0
         self._aris_start_frame = 0
         self._aris_end_frame = len(self.aris_frames) - 1
@@ -84,12 +110,20 @@ class MatchingContext:
             self._aris_start_frame = onset
             self.aris_motion_onset = onset
         
+        # Load GoPro clip
+        self.gopro_clip = cv2.VideoCapture(gopro_file)
+        all_gopro_meta = get_gopro_metadata(os.path.dirname(gopro_file))
+        self.gopro_meta = all_gopro_meta.loc[all_gopro_meta['file'] == self.gopro_basename].iloc[0]
+        self.gopro_original_creation_time = parse_gopro_datetime(self.gopro_meta['creation_time'])
+        self.gopro_original_creation_time_simple = self.gopro_original_creation_time.strftime('%Y-%m-%d_%H%M%S')
         self.gopro_frame_idx = -1
         self.gopro_frames_total = self.gopro_clip.get(cv2.CAP_PROP_FRAME_COUNT)
         self.gopro_fps = self.gopro_clip.get(cv2.CAP_PROP_FPS)
         self.gopro_offset = 0
         self.gopro_img = None
         
+        # Load Gantry recording
+        self.gantry_data = pd.read_csv(gantry_file)
         all_gantry_meta = get_gantry_metadata(os.path.dirname(gantry_file))
         self.gantry_meta = all_gantry_meta.loc[all_gantry_meta['file'] == self.gantry_basename].iloc[0]
         self.gantry_t0 = self.gantry_meta['start_us']
@@ -260,7 +294,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.out_file_path = out_file_path
         
         self.aris_data_dirs = sorted(os.path.join(aris_base_dir, f) for f in os.listdir(aris_base_dir))
-        self.gopro_files = sorted(os.path.join(gopro_base_dir, f) for f in os.listdir(gopro_base_dir) if f.lower().endswith('.mp4'))
+        self.gopro_files = sorted([os.path.join(gopro_base_dir, f) for f in os.listdir(gopro_base_dir) if f.lower().endswith('.mp4')], key=gopro_sorting_key)
         self.gantry_files = sorted(os.path.join(gantry_base_dir, f) for f in os.listdir(gantry_base_dir) if f.lower().endswith('.csv') and not 'metadata' in f.lower())
         
         # Everything else will be stored inside the context
@@ -271,6 +305,9 @@ class MainWindow(QtWidgets.QMainWindow):
         # QT things
         self._main_widget = MainWidget(self)
         self._main_widget.keyPressed.connect(self._handle_keypress)
+        
+        mono_font = QtGui.QFont('Monospace')
+        mono_font.setStyleHint(QtGui.QFont.TypeWriter)
         
         # Plots
         self.aris_canvas = QtWidgets.QLabel()
@@ -286,10 +323,13 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # UI controls
         self.dropdown_select_aris = QtWidgets.QComboBox()
+        self.dropdown_select_aris.setFont(mono_font)
         self.dropdown_select_aris.currentIndexChanged.connect(self.reload)
         self.dropdown_select_gopro = QtWidgets.QComboBox()
+        self.dropdown_select_gopro.setFont(mono_font)
         self.dropdown_select_gopro.currentIndexChanged.connect(self.reload)
         self.dropdown_select_gantry = QtWidgets.QComboBox()
+        self.dropdown_select_gantry.setFont(mono_font)
         self.dropdown_select_gantry.currentIndexChanged.connect(self.reload)
         self.refresh_dropdowns()
         
@@ -566,36 +606,58 @@ class MainWindow(QtWidgets.QMainWindow):
         self.refresh_dropdowns()
 
     def refresh_dropdowns(self):
+        # ARIS
         aris_items = []
         aris_frames_meta = None
         for idx,item in enumerate(self.aris_data_dirs):
             aris_metadata = get_aris_metadata(item)
             marks = aris_metadata[2]
+            
             if idx == max(0, self.dropdown_select_aris.currentIndex()):
                 aris_frames_meta = aris_metadata[1]
+            
             associated = '*' if idx in self.aris_associated else ' '
             motion_onset = 'm' if 'onset' in marks else ' '
-            aris_items.append(f'({associated}) ({motion_onset}) {basename(item)}')
+            aris_items.append(f'({associated}) ({motion_onset})  {basename(item)}')
         
-        gopro_items = []
-        for idx,item in enumerate(self.gopro_files):
-            associated = '*' if idx in self.gopro_associated else ' '
-            # GoPro clips are already cut to where the motion starts
-            gopro_items.append(f'({associated}) {basename(item)}')
-        
-        gantry_items = []
-        gantry_metadata = get_gantry_metadata(self.gantry_base_dir)
         # Context may not be initialized yet, so don't use context.get_aris_frametime()
         current_aris_start = aris_frames_meta['FrameTime'][0]
         current_aris_end = aris_frames_meta['FrameTime'].iloc[-1]
+        
+        # GoPro
+        gopro_items = []
+        gopro_meta = get_gopro_metadata(self.gopro_base_dir)
+        for idx,item in enumerate(self.gopro_files):
+            # GoPro clips are already cut to where the motion starts
+            # Can't match metadata based on index since we have custom sorting
+            gopro_file_meta = gopro_meta[gopro_meta['file'] == basename(item)].iloc[0]
+            gopro_creation_time = parse_gopro_datetime(gopro_file_meta['creation_time'])
+            # TODO so far we showed everything in localtime, but hardcoding the offset is ugly...
+            gopro_creation_time = gopro_creation_time.replace(hour=gopro_creation_time.hour + 2)
+            gopro_datetime_simple = gopro_creation_time.strftime('%Y-%m-%d_%H%M%S')
+            
+            # Check original timestamps to see if footage has overlap with ARIS
+            gopro_t0 = (gopro_creation_time - dt.datetime.utcfromtimestamp(0).replace(tzinfo=pytz.UTC)).total_seconds()
+            gopro_clip_start = (gopro_t0 + parse_gopro_timestamp(gopro_file_meta['original_start'])) * 1e6
+            gopro_clip_end = (gopro_t0 + parse_gopro_timestamp(gopro_file_meta['original_end'])) * 1e6
+            
+            associated = '*' if idx in self.gopro_associated else ' '
+            overlapping = 'x' if gopro_clip_start < current_aris_end and gopro_clip_end > current_aris_start else ' '
+            # TODO overlapping is not useful because for some reason all footage from day1 has the same creation date
+            gopro_items.append(f'({associated}) ( )  {gopro_datetime_simple} {basename(item)}')
+        
+        # Gantry
+        gantry_items = []
+        gantry_metadata = get_gantry_metadata(self.gantry_base_dir)
         for idx,item in enumerate(self.gantry_files):
             gantry_file_meta = gantry_metadata.iloc[idx]
             gantry_file_start = gantry_file_meta['start_us']
             gantry_file_end = gantry_file_meta['end_us']
+            
+            # Mark gantry files which have timestamps overlapping with selected ARIS file
             associated = '*' if idx in self.gantry_associated else ' '
-            # mark gantry files which have timestamps overlapping with selected ARIS file
             overlapping = 'x' if gantry_file_start < current_aris_end and gantry_file_end > current_aris_start else ' '
-            gantry_items.append(f'({associated}) ({overlapping}) {basename(item)}')
+            gantry_items.append(f'({associated}) ({overlapping})  {basename(item)}')
         
         def repopulate(dropdown, items):
             idx = max(0, dropdown.currentIndex())
