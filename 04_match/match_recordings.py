@@ -644,7 +644,7 @@ class MainWindow(QtWidgets.QMainWindow):
             associated = '*' if idx in self.gopro_associated else ' '
             overlapping = 'x' if gopro_clip_start < current_aris_end and gopro_clip_end > current_aris_start else ' '
             # TODO overlapping is not useful because for some reason all footage from day1 has the same creation date
-            gopro_items.append(f'({associated}) ( )  {gopro_datetime_simple} {basename(item)}')
+            gopro_items.append(f'({associated}) ( )  {gopro_datetime_simple}  {basename(item)}')
         
         # Gantry
         gantry_items = []
