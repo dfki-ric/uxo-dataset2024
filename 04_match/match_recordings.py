@@ -575,13 +575,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 aris_frames_meta = aris_metadata[1]
             associated = '*' if idx in self.aris_associated else ' '
             motion_onset = 'm' if 'onset' in marks else ' '
-            aris_items.append(f'({associated}) ({motion_onset}) {item}')
+            aris_items.append(f'({associated}) ({motion_onset}) {basename(item)}')
         
         gopro_items = []
         for idx,item in enumerate(self.gopro_files):
             associated = '*' if idx in self.gopro_associated else ' '
             # GoPro clips are already cut to where the motion starts
-            gopro_items.append(f'({associated}) {item}')
+            gopro_items.append(f'({associated}) {basename(item)}')
         
         gantry_items = []
         gantry_metadata = get_gantry_metadata(self.gantry_base_dir)
@@ -595,7 +595,7 @@ class MainWindow(QtWidgets.QMainWindow):
             associated = '*' if idx in self.gantry_associated else ' '
             # mark gantry files which have timestamps overlapping with selected ARIS file
             overlapping = 'x' if gantry_file_start < current_aris_end and gantry_file_end > current_aris_start else ' '
-            gantry_items.append(f'({associated}) ({overlapping}) {item}')
+            gantry_items.append(f'({associated}) ({overlapping}) {basename(item)}')
         
         def repopulate(dropdown, items):
             idx = max(0, dropdown.currentIndex())
