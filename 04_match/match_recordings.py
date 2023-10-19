@@ -20,6 +20,11 @@ def usage():
 def basename(s):
     return os.path.split(s)[-1]
 
+def split_microseconds(timestamp_us):
+    s = int(timestamp_us // 1e6)
+    ms = int((timestamp_us - s * 1e6) // 1e3)
+    us = int(timestamp_us - s * 1e6 - ms * 1e3)
+    return s, ms, us
 
 _aris_metadata_cache = {}
 def get_aris_metadata(aris_data_dir):
@@ -69,17 +74,15 @@ class MatchingContext:
         self._aris_end_frame = len(self.aris_frames) - 1
         self.aris_motion_onset = None
         self.aris_frames_total = len(self.aris_frames)
-        self.aris_t0 = self.aris_frames_meta.at[0, 'FrameTime']
-        self.aris_duration = self.aris_frames_meta.at[self.aris_frames_total - 1, 'FrameTime'] - self.aris_t0
+        self.aris_t0 = self.get_aris_frametime(0)
+        self.aris_duration = self.get_aris_frametime(-1) - self.aris_t0
         self.aris_img = None
 
         # Load beginning of motion frame from save file
-        if self.aris_marks_meta:
-            print(f'Found save file for {self.aris_basename}')
-            if 'onset' in self.aris_marks_meta:
-                onset = max(0, self.aris_marks_meta['onset'])
-                self._aris_start_frame = onset
-                self.aris_motion_onset = onset
+        if self.aris_marks_meta and 'onset' in self.aris_marks_meta:
+            onset = max(0, self.aris_marks_meta['onset'])
+            self._aris_start_frame = onset
+            self.aris_motion_onset = onset
         
         self.gopro_frame_idx = -1
         self.gopro_frames_total = self.gopro_clip.get(cv2.CAP_PROP_FRAME_COUNT)
@@ -87,12 +90,19 @@ class MatchingContext:
         self.gopro_offset = 0
         self.gopro_img = None
         
-        self.gantry_offset = 0.
-        self.gantry_t0 = self.gantry_data.at[0, 'timestamp_us']
-        self.gantry_duration = self.gantry_data['timestamp_us'].iloc[-1] - self.gantry_t0
+        all_gantry_meta = get_gantry_metadata(os.path.dirname(gantry_file))
+        self.gantry_meta = all_gantry_meta.loc[all_gantry_meta['file'] == self.gantry_basename].iloc[0]
+        self.gantry_t0 = self.gantry_meta['start_us']
+        self.gantry_duration = self.gantry_meta['end_us'] - self.gantry_t0
+        self.gantry_offset = self.gantry_meta['onset_us'] - self.gantry_t0
         
         self.reload = True
-        
+    
+    def get_aris_frametime(self, frame_idx):
+        # FrameTime = time of recording on PC (µs since 1970)
+        # sonarTimeStamp = time of recording on sonar (µs since 1970), not sure if synchronized to PC time
+        return self.aris_frames_meta['FrameTime'].iloc[frame_idx]
+    
     @property
     def aris_frame_idx(self):
         return self._aris_frame_idx
@@ -129,7 +139,7 @@ class MatchingContext:
     
     @property
     def aris_active_duration(self):
-        return self.aris_frames_meta.at[self.aris_end_frame, 'FrameTime'] - self.aris_frames_meta.at[self.aris_start_frame, 'FrameTime']
+        return self.get_aris_frametime(self.aris_end_frame) - self.get_aris_frametime(self.aris_start_frame)
     
     
     def tick(self):
@@ -137,9 +147,7 @@ class MatchingContext:
         self.aris_frame_idx += 1
         
     def get_aris_frame(self):
-        # FrameTime = time of recording on PC (µs since 1970)
-        # sonarTimeStamp = time of recording on sonar (µs since 1970), not sure if synchronized to PC time
-        frametime = self.aris_frames_meta.at[self.aris_frame_idx, 'FrameTime']
+        frametime = self.get_aris_frametime(self.aris_frame_idx)
         if self.aris_img is None:
             self.aris_img = QtGui.QPixmap(self.aris_frames[self.aris_frame_idx])
         return self.aris_img, frametime
@@ -161,8 +169,8 @@ class MatchingContext:
         return self.gopro_img, self.gopro_frame_idx
         
     def get_gantry_odom(self, aris_frametime):
-        # ARIS and gantry data use absolute timestamps in microseconds, offset is in milliseconds
-        timepos = (aris_frametime + self.gantry_offset * 1e3)
+        time_after_onset = aris_frametime - self.get_aris_frametime(self.aris_start_frame)
+        timepos = self.gantry_t0 + self.gantry_offset + time_after_onset
         
         if timepos < self.gantry_t0:
             timepos = self.gantry_t0
@@ -203,6 +211,9 @@ class MySlider(QtWidgets.QSlider):
         super().__init__(QtCore.Qt.Horizontal)
         self.mousePressPos = None
         self.setMouseTracking(True)
+        
+    def wheelEvent(self, e):
+        self.setValue(self.value() + np.sign(e.angleDelta().y()) * self.singleStep())
     
     def mousePressEvent(self, e):
         if e.button() == QtCore.Qt.LeftButton:
@@ -325,25 +336,31 @@ class MainWindow(QtWidgets.QMainWindow):
         self.spinner_gantry_pos = QtWidgets.QSpinBox()
         self.spinner_gantry_pos.setMaximum(1000)
         self.spinner_gantry_pos.setEnabled(False)
-        # Driven by update
+        # Driven by update()
         connect_slider_spinner(self.slider_gantry_pos, self.spinner_gantry_pos, lambda v: None)
         
         self.slider_gantry_offset_s = MySlider()
-        self.slider_gantry_offset_s.setRange(-500, 500)
+        self.slider_gantry_offset_s.setRange(-1000, 1000)
+        self.slider_gantry_offset_s.setSingleStep(1)
+        self.slider_gantry_offset_s.setPageStep(5)
         self.spinner_gantry_offset_s = QtWidgets.QSpinBox()
-        self.spinner_gantry_offset_s.setRange(-500., 500.)
+        self.spinner_gantry_offset_s.setRange(-1000, 1000)
         connect_slider_spinner(self.slider_gantry_offset_s, self.spinner_gantry_offset_s, self._on_gantry_offset_changed)
         
         self.slider_gantry_offset_ms = MySlider()
-        self.slider_gantry_offset_ms.setRange(-500, 500)
+        self.slider_gantry_offset_ms.setRange(-1000, 1000)
+        self.slider_gantry_offset_ms.setSingleStep(5)
+        self.slider_gantry_offset_ms.setPageStep(10)
         self.spinner_gantry_offset_ms = QtWidgets.QSpinBox()
-        self.spinner_gantry_offset_ms.setRange(-500., 500.)
+        self.spinner_gantry_offset_ms.setRange(-1000, 1000)
         connect_slider_spinner(self.slider_gantry_offset_ms, self.spinner_gantry_offset_ms, self._on_gantry_offset_changed)
         
         self.slider_gantry_offset_us = MySlider()
-        self.slider_gantry_offset_us.setRange(-500, 500)
+        self.slider_gantry_offset_us.setRange(-1000, 1000)
+        self.slider_gantry_offset_us.setSingleStep(10)
+        self.slider_gantry_offset_us.setPageStep(50)
         self.spinner_gantry_offset_us = QtWidgets.QSpinBox()
-        self.spinner_gantry_offset_us.setRange(-500., 500.)
+        self.spinner_gantry_offset_us.setRange(-1000, 1000)
         connect_slider_spinner(self.slider_gantry_offset_us, self.spinner_gantry_offset_us, self._on_gantry_offset_changed)
         
         # Buttons and playback
@@ -414,7 +431,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
         ui_layout.addStretch()
 
-        ui_layout.addWidget(QtWidgets.QLabel("Playback FPS"))
+        ui_layout.addWidget(QtWidgets.QLabel("Max. Playback FPS"))
         ui_layout.addWidget(self.spinner_playback_fps)
         
         ui_layout.addWidget(QtWidgets.QLabel(""))
@@ -551,18 +568,16 @@ class MainWindow(QtWidgets.QMainWindow):
     def refresh_dropdowns(self):
         aris_items = []
         aris_frames_meta = None
-        aris_selected_idx = max(0, self.dropdown_select_aris.currentIndex())
         for idx,item in enumerate(self.aris_data_dirs):
             aris_metadata = get_aris_metadata(item)
             marks = aris_metadata[2]
-            if idx == aris_selected_idx:
+            if idx == max(0, self.dropdown_select_aris.currentIndex()):
                 aris_frames_meta = aris_metadata[1]
             associated = '*' if idx in self.aris_associated else ' '
             motion_onset = 'm' if 'onset' in marks else ' '
             aris_items.append(f'({associated}) ({motion_onset}) {item}')
         
         gopro_items = []
-        #gopro_selected_idx = max(0, self.dropdown_select_gopro.currentIndex())
         for idx,item in enumerate(self.gopro_files):
             associated = '*' if idx in self.gopro_associated else ' '
             # GoPro clips are already cut to where the motion starts
@@ -570,9 +585,9 @@ class MainWindow(QtWidgets.QMainWindow):
         
         gantry_items = []
         gantry_metadata = get_gantry_metadata(self.gantry_base_dir)
+        # Context may not be initialized yet, so don't use context.get_aris_frametime()
         current_aris_start = aris_frames_meta['FrameTime'][0]
         current_aris_end = aris_frames_meta['FrameTime'].iloc[-1]
-        #gantry_selected_idx = max(0, self.dropdown_select_gantry.currentIndex())
         for idx,item in enumerate(self.gantry_files):
             gantry_file_meta = gantry_metadata.iloc[idx]
             gantry_file_start = gantry_file_meta['start_us']
@@ -687,14 +702,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.rangeslider_aris.setRange(self.context.aris_start_frame, self.context.aris_end_frame)
         self.rangeslider_aris.update()
         
+        gantry_offset_s, gantry_offset_ms, gantry_offset_us = split_microseconds(self.context.gantry_offset)
+        self.slider_gantry_offset_s.setValue(gantry_offset_s)
+        self.slider_gantry_offset_ms.setValue(gantry_offset_ms)
+        self.slider_gantry_offset_us.setValue(gantry_offset_us)
+        
         # Prepare the gantry plot. As we update, we will only move the vertical line marker across.
         gantry_data = self.context.gantry_data
-        #self.gantry_plot.set_xlim([0, self.context.gantry_duration])
+        self.gantry_plot.set_xlim([0, self.context.gantry_duration])
         gantry_t = gantry_data['timestamp_us'] - self.context.gantry_t0
         self.gantry_plot.plot(gantry_t, gantry_data['x'], 'r', label='x')
         self.gantry_plot.plot(gantry_t, gantry_data['y'], 'g', label='y')
         self.gantry_plot.plot(gantry_t, gantry_data['z'], 'b', label='z')
-        self.gantry_offset_marker = self.gantry_plot.axvline(0, color='orange')
+        self.gantry_offset_marker = self.gantry_plot.axvline(self.context.gantry_offset, color='orange')
         self.plot_canvas.setStyleSheet('background-color:none;')  # TODO not working yet
         
         self.context.reload = False
