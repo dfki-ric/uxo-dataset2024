@@ -15,10 +15,6 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from qrangeslider import QRangeSlider
 
 
-def usage():
-    print(f'{sys.argv[0]} <aris-folder> <gantry-folger> <gopro-folder> <output_file.csv>')
-
-
 def basename(s):
     return os.path.split(s)[-1]
 
@@ -279,7 +275,7 @@ class MySlider(QtWidgets.QSlider):
 
 
 class MainWindow(QtWidgets.QMainWindow):
-    def __init__(self, aris_base_dir, gopro_base_dir, gantry_base_dir, out_file_path, autoplay=False):
+    def __init__(self, aris_base_dir, gopro_base_dir, gantry_base_dir, autoplay=False):
         super().__init__()
         
         self.aris_associated = set()
@@ -291,7 +287,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.aris_base_dir = aris_base_dir
         self.gopro_base_dir = gopro_base_dir
         self.gantry_base_dir = gantry_base_dir
-        self.out_file_path = out_file_path
         
         self.aris_data_dirs = sorted(os.path.join(aris_base_dir, f) for f in os.listdir(aris_base_dir))
         self.gopro_files = sorted([os.path.join(gopro_base_dir, f) for f in os.listdir(gopro_base_dir) if f.lower().endswith('.mp4')], key=gopro_sorting_key)
@@ -789,18 +784,21 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
 if __name__ == '__main__':
-    # TODO
-    sys.argv = [sys.argv[0], 'data/aris/day1/', 'data/gantry/day1/', 'data/gopro/day1/clips_sd/', 'out.csv']
+    import argparse
     
-    if len(sys.argv) != 5:
-        usage()
-        raise RuntimeError('Wrong number of arguments')
+    parser = argparse.ArgumentParser()
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument('--day', choices=['1', '2'], help="Load datasets from 'data/[aris|gopro|gantry]/day<X>/")
+    group.add_argument('--dirs', nargs=3, metavar=('ARIS_DIR', 'GOPRO_DIR', 'GANTRY_DIR'), help="Load datasets from the provided directories")
+    args = parser.parse_args()
     
-    aris_dir_path = sys.argv[1]
-    gopro_dir_path = sys.argv[3]
-    gantry_dir_path = sys.argv[2]
-    out_file_path = sys.argv[4]
+    if args.day in ['1', '2']:
+        aris_dir_path = f'data/aris/day{args.day}/'
+        gopro_dir_path = f'data/gopro/day{args.day}/clips_sd/'
+        gantry_dir_path = f'data/gantry/day{args.day}/'
+    else:
+        aris_dir_path, gopro_dir_path, gantry_dir_path = args.dirs
     
     app = QtWidgets.QApplication(sys.argv)
-    main = MainWindow(aris_dir_path, gopro_dir_path, gantry_dir_path, out_file_path)
+    main = MainWindow(aris_dir_path, gopro_dir_path, gantry_dir_path)
     sys.exit(app.exec_())
