@@ -222,6 +222,7 @@ class Association:
     aris_onset: int
     gopro_offset: int
     gantry_offset: float
+    notes: str
 
 
 class MainWidget(QtWidgets.QWidget):
@@ -398,6 +399,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.spinner_gantry_offset_us.setRange(-1000, 1000)
         connect_slider_spinner(self.slider_gantry_offset_us, self.spinner_gantry_offset_us, self._on_gantry_offset_changed)
         
+        # Notes area
+        self.notes_widget = QtWidgets.QPlainTextEdit()
+        
         # Buttons and playback
         self.spinner_playback_fps = QtWidgets.QSpinBox()
         self.spinner_playback_fps.setRange(1, 60)
@@ -464,8 +468,12 @@ class MainWindow(QtWidgets.QMainWindow):
         ui_layout = QtWidgets.QVBoxLayout()
         ui_layout.addLayout(ctrl_layout)
         
-        ui_layout.addStretch()
-
+        ui_layout.addWidget(QtWidgets.QLabel(""))
+        ui_layout.addWidget(QtWidgets.QLabel("Notes"))
+        ui_layout.addWidget(self.notes_widget)
+        ui_layout.setStretchFactor(self.notes_widget, 100)
+        
+        ui_layout.addWidget(QtWidgets.QLabel(""))
         ui_layout.addWidget(QtWidgets.QLabel("Max. Playback FPS"))
         ui_layout.addWidget(self.spinner_playback_fps)
         
@@ -549,7 +557,8 @@ class MainWindow(QtWidgets.QMainWindow):
             self.dropdown_select_gantry.currentIndex(),
             self.context.aris_start_frame,
             self.context.gopro_offset,
-            self.context.gantry_offset
+            self.context.gantry_offset,
+            self.notes_widget.toPlainText(),
         )
         
         # Check if there was a previous association with any of the files; if so, remove it
@@ -732,9 +741,13 @@ class MainWindow(QtWidgets.QMainWindow):
     def reset_context(self):
         self.refresh_dropdowns()
         
-        aris_file = self.aris_data_dirs[self.dropdown_select_aris.currentIndex()]
-        gopro_file = self.gopro_files[self.dropdown_select_gopro.currentIndex()]
-        gantry_file = self.gantry_files[self.dropdown_select_gantry.currentIndex()]
+        aris_idx = self.dropdown_select_aris.currentIndex()
+        gopro_idx = self.dropdown_select_gopro.currentIndex()
+        gantry_idx = self.dropdown_select_gantry.currentIndex()
+        
+        aris_file = self.aris_data_dirs[aris_idx]
+        gopro_file = self.gopro_files[gopro_idx]
+        gantry_file = self.gantry_files[gantry_idx]
         
         self.context = MatchingContext(aris_file, gopro_file, gantry_file)
         self.gantry_plot.cla()
@@ -773,6 +786,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self.gantry_plot.plot(gantry_t, gantry_data['z'], 'b', label='z')
         self.gantry_offset_marker = self.gantry_plot.axvline(self.context.gantry_offset, color='orange')
         self.plot_canvas.setStyleSheet('background-color:none;')  # TODO not working yet
+        
+        association: Association = self.association_details.get(aris_idx)
+        if association and association.gopro_idx == gopro_idx and association.gantry_idx == gantry_idx:
+            self.notes_widget.setPlainText(association.notes)
+        else:
+            self.notes_widget.setPlainText('')
         
         self.context.reload = False
 
