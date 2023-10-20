@@ -94,6 +94,7 @@ class MatchingContext:
         self._aris_frame_idx = 0
         self._aris_start_frame = 0
         self._aris_end_frame = len(self.aris_frames) - 1
+        self.aris_tick_step = 1
         self.aris_motion_onset = None
         self.aris_frames_total = len(self.aris_frames)
         self.aris_t0 = self.get_aris_frametime(0)
@@ -174,7 +175,7 @@ class MatchingContext:
     
     def tick(self):
         self.aris_img = None
-        self.aris_frame_idx += 1
+        self.aris_frame_idx += self.aris_tick_step
         
     def get_aris_frame(self):
         frametime = self.get_aris_frametime(self.aris_frame_idx)
@@ -184,7 +185,7 @@ class MatchingContext:
     
     def get_gopro_frame(self, aris_frametime):
         # TODO aris frametime is in microseconds, then why does 1e3 seem correct for frames per SECOND?
-        time_from_start = aris_frametime - self.aris_t0
+        time_from_start = aris_frametime - self.get_aris_frametime(self.aris_start_frame)
         new_frame_idx = int(time_from_start / 1e3 // self.gopro_fps) + self.gopro_offset
         
         if new_frame_idx != self.gopro_frame_idx:
@@ -406,10 +407,15 @@ class MainWindow(QtWidgets.QMainWindow):
         connect_slider_spinner(self.slider_gantry_offset_us, self.spinner_gantry_offset_us, self._on_gantry_offset_changed)
         
         # Playback
-        self.spinner_playback_fps = QtWidgets.QSpinBox()
-        self.spinner_playback_fps.setRange(1, 60)
-        self.spinner_playback_fps.setValue(15)
-        self.spinner_playback_fps.valueChanged[int].connect(self._on_playback_fps_changed)
+        self.spinner_playback_fpu = QtWidgets.QSpinBox()
+        self.spinner_playback_fpu.setRange(1, 10)
+        self.spinner_playback_fpu.setValue(1)
+        self.spinner_playback_fpu.valueChanged[int].connect(self._on_playback_fpu_changed)
+        
+        self.spinner_playback_ups = QtWidgets.QSpinBox()
+        self.spinner_playback_ups.setRange(1, 60)
+        self.spinner_playback_ups.setValue(15)
+        self.spinner_playback_ups.valueChanged[int].connect(self._on_playback_ups_changed)
         
         self.button_play_pause = QtWidgets.QPushButton('&Play / Pause')
         self.button_play_pause.clicked.connect(self._handle_play_pause_button)
@@ -479,8 +485,14 @@ class MainWindow(QtWidgets.QMainWindow):
         ui_layout = QtWidgets.QVBoxLayout()
         ui_layout.addLayout(ctrl_layout)
         
-        ui_layout.addWidget(QtWidgets.QLabel("Max. Playback FPS"))
-        ui_layout.addWidget(self.spinner_playback_fps)
+        fps_layout = QtWidgets.QGridLayout()
+        fps_layout.addWidget(QtWidgets.QLabel("Updates per Second"), 0, 0)
+        fps_layout.addWidget(QtWidgets.QLabel("Frames per Update"), 0, 1)
+        fps_layout.addWidget(self.spinner_playback_ups, 1, 0)
+        fps_layout.addWidget(self.spinner_playback_fpu, 1, 1)
+        
+        ui_layout.addWidget(QtWidgets.QLabel(""))
+        ui_layout.addLayout(fps_layout)
         ui_layout.addWidget(self.button_play_pause)
         
         ui_layout.addWidget(QtWidgets.QLabel(""))
@@ -517,8 +529,8 @@ class MainWindow(QtWidgets.QMainWindow):
         splitter.setStretchFactor(100, 50)
         
         self.layout = QtWidgets.QGridLayout(self._main_widget)
-        self.layout.addWidget(self.aris_canvas, 0, 0, 2, 1)
-        self.layout.addWidget(self.gopro_canvas, 0, 1)
+        self.layout.addWidget(self.aris_canvas, 0, 0, 2, 1, QtCore.Qt.AlignTop)
+        self.layout.addWidget(self.gopro_canvas, 0, 1, 1, 1, QtCore.Qt.AlignTop)
         self.layout.addWidget(self.plot_canvas, 1, 1)
         self.layout.addWidget(splitter, 0, 2, 2, 1)
         #self.layout.addLayout(ui_layout, 0, 2, 2, 1)
@@ -531,7 +543,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Update in regular intervals
         self.update_timer = QtCore.QTimer()
         self.update_timer.timeout.connect(self.do_update)
-        self.update_timer.setInterval(1000 // self.spinner_playback_fps.value())
+        self.update_timer.setInterval(1000 // self.spinner_playback_ups.value())
         self.update_timer.start()
         
         self.reset_context()
@@ -558,9 +570,14 @@ class MainWindow(QtWidgets.QMainWindow):
                                     + self.slider_gantry_offset_us.value()
         
     @QtCore.pyqtSlot(int)
-    def _on_playback_fps_changed(self, val):
+    def _on_playback_fpu_changed(self, val):
+        #self.update_timer.setInterval(1000 // val)
+        self.context.aris_tick_step = val
+        
+    @QtCore.pyqtSlot(int)
+    def _on_playback_ups_changed(self, val):
         self.update_timer.setInterval(1000 // val)
-
+        
 
     def _handle_play_pause_button(self):
         self.playing = not self.playing
@@ -776,6 +793,7 @@ class MainWindow(QtWidgets.QMainWindow):
         gantry_file = self.gantry_files[gantry_idx]
         
         self.context = MatchingContext(aris_file, gopro_file, gantry_file)
+        self.context.aris_tick_step = self.spinner_playback_fpu.value()
         self.gantry_plot.cla()
         
         # We can skip so much of the gopro clip that it barely starts playing
@@ -820,8 +838,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.check_associate_gantry.setChecked(association.has_gantry())
         else:
             self.notes_widget.setPlainText('')
-            self.check_associate_gopro.setChecked(True)
-            self.check_associate_gantry.setChecked(True)
+            #self.check_associate_gopro.setChecked(True)
+            #self.check_associate_gantry.setChecked(True)
         
         self.context.reload = False
 
@@ -834,9 +852,6 @@ class MainWindow(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     import argparse
-    
-    # TODO
-    sys.argv.extend('--day 1'.split())
     
     parser = argparse.ArgumentParser()
     group = parser.add_mutually_exclusive_group(required=True)
