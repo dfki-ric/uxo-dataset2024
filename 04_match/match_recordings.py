@@ -223,6 +223,12 @@ class Association:
     gopro_offset: int
     gantry_offset: float
     notes: str
+    
+    def has_gopro(self):
+        return self.gopro_idx >= 0
+    
+    def has_gantry(self):
+        return self.gantry_idx >= 0
 
 
 class MainWidget(QtWidgets.QWidget):
@@ -399,10 +405,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.spinner_gantry_offset_us.setRange(-1000, 1000)
         connect_slider_spinner(self.slider_gantry_offset_us, self.spinner_gantry_offset_us, self._on_gantry_offset_changed)
         
-        # Notes area
-        self.notes_widget = QtWidgets.QPlainTextEdit()
-        
-        # Buttons and playback
+        # Playback
         self.spinner_playback_fps = QtWidgets.QSpinBox()
         self.spinner_playback_fps.setRange(1, 60)
         self.spinner_playback_fps.setValue(15)
@@ -410,6 +413,16 @@ class MainWindow(QtWidgets.QMainWindow):
         
         self.button_play_pause = QtWidgets.QPushButton('&Play / Pause')
         self.button_play_pause.clicked.connect(self._handle_play_pause_button)
+        
+        # Export
+        self.notes_widget = QtWidgets.QPlainTextEdit()
+        
+        #self.check_associate_aris = QtWidgets.QCheckBox('ARIS')
+        #self.check_associate_aris.setChecked(True)
+        self.check_associate_gopro = QtWidgets.QCheckBox('GoPro')
+        self.check_associate_gopro.setChecked(True)
+        self.check_associate_gantry = QtWidgets.QCheckBox('Gantry')
+        self.check_associate_gantry.setChecked(True)
         
         self.button_associate = QtWidgets.QPushButton('&Associate')
         self.button_associate.clicked.connect(self._handle_associate_button)
@@ -434,9 +447,9 @@ class MainWindow(QtWidgets.QMainWindow):
         ctrl_layout.addWidget(self.slider_aris_pos, 9, 0)
         ctrl_layout.addWidget(self.spinner_aris_pos, 9, 1)
         ctrl_layout.addWidget(QtWidgets.QLabel("f"), 9, 2)
-        ctrl_layout.addWidget(self.rangeslider_aris, 10, 0, 1, -1)
+        ctrl_layout.addWidget(self.rangeslider_aris, 10, 0)
         
-        ctrl_layout.addWidget(QtWidgets.QLabel(""), 11, 0, 1, -1)
+        #ctrl_layout.addWidget(QtWidgets.QLabel(""), 11, 0, 1, -1)
         ctrl_layout.addWidget(QtWidgets.QLabel("GoPro Frame"), 12, 0, 1, -1)
         ctrl_layout.addWidget(self.slider_gopro_pos, 13, 0)
         ctrl_layout.addWidget(self.spinner_gopro_pos, 13, 1)
@@ -446,13 +459,13 @@ class MainWindow(QtWidgets.QMainWindow):
         ctrl_layout.addWidget(self.spinner_gopro_offset, 15, 1)
         ctrl_layout.addWidget(QtWidgets.QLabel("f"), 15, 2)
         
-        ctrl_layout.addWidget(QtWidgets.QLabel(""), 16, 0, 1, -1)
+        #ctrl_layout.addWidget(QtWidgets.QLabel(""), 16, 0, 1, -1)
         ctrl_layout.addWidget(QtWidgets.QLabel("Gantry Progress"), 17, 0, 1, -1)
         ctrl_layout.addWidget(self.slider_gantry_pos, 18, 0)
         ctrl_layout.addWidget(self.spinner_gantry_pos, 18, 1)
         ctrl_layout.addWidget(QtWidgets.QLabel("%"), 18, 2)
         
-        ctrl_layout.addWidget(QtWidgets.QLabel(""), 19, 0, 1, -1)
+        #ctrl_layout.addWidget(QtWidgets.QLabel(""), 19, 0, 1, -1)
         ctrl_layout.addWidget(QtWidgets.QLabel("Gantry Offset"), 20, 0, 1, -1)
         ctrl_layout.addWidget(self.slider_gantry_offset_s, 21, 0)
         ctrl_layout.addWidget(self.spinner_gantry_offset_s, 21, 1)
@@ -468,17 +481,21 @@ class MainWindow(QtWidgets.QMainWindow):
         ui_layout = QtWidgets.QVBoxLayout()
         ui_layout.addLayout(ctrl_layout)
         
+        ui_layout.addWidget(QtWidgets.QLabel("Max. Playback FPS"))
+        ui_layout.addWidget(self.spinner_playback_fps)
+        ui_layout.addWidget(self.button_play_pause)
+        
         ui_layout.addWidget(QtWidgets.QLabel(""))
         ui_layout.addWidget(QtWidgets.QLabel("Notes"))
         ui_layout.addWidget(self.notes_widget)
         ui_layout.setStretchFactor(self.notes_widget, 100)
         
-        ui_layout.addWidget(QtWidgets.QLabel(""))
-        ui_layout.addWidget(QtWidgets.QLabel("Max. Playback FPS"))
-        ui_layout.addWidget(self.spinner_playback_fps)
+        checkbox_layout = QtWidgets.QHBoxLayout()
+        #checkbox_layout.addWidget(self.check_associate_aris)
+        checkbox_layout.addWidget(self.check_associate_gopro)
+        checkbox_layout.addWidget(self.check_associate_gantry)
+        ui_layout.addLayout(checkbox_layout)
         
-        ui_layout.addWidget(QtWidgets.QLabel(""))
-        ui_layout.addWidget(self.button_play_pause)
         ui_layout.addWidget(self.button_associate)
         ui_layout.addWidget(self.button_save)
         
@@ -551,10 +568,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.playing = not self.playing
 
     def _handle_associate_button(self):
+        aris_idx = self.dropdown_select_aris.currentIndex()
+        gopro_idx = self.dropdown_select_gopro.currentIndex() if self.check_associate_gopro.isChecked() else -1
+        gantry_idx = self.dropdown_select_gantry.currentIndex() if self.check_associate_gantry.isChecked() else -1
+        
         association = Association(
-            self.dropdown_select_aris.currentIndex(),
-            self.dropdown_select_gopro.currentIndex(),
-            self.dropdown_select_gantry.currentIndex(),
+            aris_idx,
+            gopro_idx,
+            gantry_idx,
             self.context.aris_start_frame,
             self.context.gopro_offset,
             self.context.gantry_offset,
@@ -562,38 +583,45 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         
         # Check if there was a previous association with any of the files; if so, remove it
-        old_association = None
-        if association.aris_idx in self.aris_associated:
-            old_association = self.association_details[association.aris_idx]
-        elif association.gopro_idx in self.gopro_associated:
-            for a in self.association_details.values():
-                if a.gopro_idx == association.gopro_idx:
-                    old_association = a
-                    break
-        elif association.gantry_idx in self.gantry_associated:
-            for a in self.association_details.values():
-                if a.gantry_idx == association.gantry_idx:
-                    old_association = a
-                    break
-        
-        if old_association is not None:
-            self.aris_associated.discard(old_association.aris_idx)
-            self.gopro_associated.discard(old_association.gopro_idx)
-            self.gantry_associated.discard(old_association.gantry_idx)
-            del self.association_details[old_association.aris_idx]
+        to_remove = []
+        for old_association in self.association_details.values():
+            if not (aris_idx == old_association.aris_idx or (gopro_idx >= 0 and gopro_idx == old_association.gopro_idx) or (gantry_idx >= 0 and gantry_idx == old_association.gantry_idx)):
+                continue
             
-            self.table_associations.setItem(old_association.aris_idx, 1, None)
-            self.table_associations.setItem(old_association.aris_idx, 2, None)
+            # Steal the GoPro association if necessary
+            if self.check_associate_gopro.isChecked():
+                self.gopro_associated.discard(old_association.gopro_idx)
+                old_association.gopro_idx = -1
+                self.table_associations.setItem(old_association.aris_idx, 1, None)
+                
+            # Steal the Gantry association if necessary
+            if self.check_associate_gantry.isChecked():
+                self.gantry_associated.discard(old_association.gantry_idx)
+                old_association.gantry_idx = -1
+                self.table_associations.setItem(old_association.aris_idx, 2, None)
+            
+            # If nothing is left in the old association, delete it
+            if not old_association.has_gopro() and not old_association.has_gantry():
+                self.aris_associated.discard(old_association.aris_idx)
+                to_remove.append(old_association.aris_idx)
+        
+        for key in to_remove:
+            del self.association_details[key]
+        
         
         # Store new association
-        self.aris_associated.add(association.aris_idx)
-        self.gopro_associated.add(association.gopro_idx)
-        self.gantry_associated.add(association.gantry_idx)
-        self.association_details[association.aris_idx] = association
+        self.aris_associated.add(aris_idx)
         
-        # Update table
-        self.table_associations.setItem(association.aris_idx, 1, QtWidgets.QTableWidgetItem(self.context.gopro_basename))
-        self.table_associations.setItem(association.aris_idx, 2, QtWidgets.QTableWidgetItem(self.context.gantry_basename))
+        if gopro_idx >= 0:
+            self.gopro_associated.add(gopro_idx)
+            self.table_associations.setItem(aris_idx, 1, QtWidgets.QTableWidgetItem(self.context.gopro_basename))
+            
+        if gantry_idx >= 0:
+            self.gantry_associated.add(gantry_idx)
+            self.table_associations.setItem(aris_idx, 2, QtWidgets.QTableWidgetItem(self.context.gantry_basename))
+        
+        self.association_details[aris_idx] = association
+        
         
         # XXX Automatically skipping to next entries seemd counter-intuitive
         # Mark files as associated in dropdowns
@@ -788,10 +816,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.plot_canvas.setStyleSheet('background-color:none;')  # TODO not working yet
         
         association: Association = self.association_details.get(aris_idx)
-        if association and association.gopro_idx == gopro_idx and association.gantry_idx == gantry_idx:
-            self.notes_widget.setPlainText(association.notes)
+        if association and (not association.has_gopro() or association.gopro_idx == gopro_idx) and (not association.has_gantry() or association.gantry_idx == gantry_idx):
+                self.notes_widget.setPlainText(association.notes)
+                self.check_associate_gopro.setChecked(association.has_gopro())
+                self.check_associate_gantry.setChecked(association.has_gantry())
         else:
             self.notes_widget.setPlainText('')
+            #self.check_associate_aris.setChecked(True)
+            self.check_associate_gopro.setChecked(True)
+            self.check_associate_gantry.setChecked(True)
         
         self.context.reload = False
 
@@ -804,6 +837,9 @@ class MainWindow(QtWidgets.QMainWindow):
 
 if __name__ == '__main__':
     import argparse
+    
+    # TODO
+    sys.argv.extend('--day 1'.split())
     
     parser = argparse.ArgumentParser()
     group = parser.add_mutually_exclusive_group(required=True)
