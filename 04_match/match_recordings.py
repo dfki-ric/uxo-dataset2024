@@ -417,8 +417,6 @@ class MainWindow(QtWidgets.QMainWindow):
         # Export
         self.notes_widget = QtWidgets.QPlainTextEdit()
         
-        #self.check_associate_aris = QtWidgets.QCheckBox('ARIS')
-        #self.check_associate_aris.setChecked(True)
         self.check_associate_gopro = QtWidgets.QCheckBox('GoPro')
         self.check_associate_gopro.setChecked(True)
         self.check_associate_gantry = QtWidgets.QCheckBox('Gantry')
@@ -443,29 +441,29 @@ class MainWindow(QtWidgets.QMainWindow):
         ctrl_layout.addWidget(QtWidgets.QLabel("(*) associated\n(m) has motion onset\n(x) has timestamp overlap"), 6, 0, 1, -1)
         
         ctrl_layout.addWidget(QtWidgets.QLabel(""), 7, 0, 1, -1)
-        ctrl_layout.addWidget(QtWidgets.QLabel("Aris Frame"), 8, 0, 1, -1)
-        ctrl_layout.addWidget(self.slider_aris_pos, 9, 0)
-        ctrl_layout.addWidget(self.spinner_aris_pos, 9, 1)
-        ctrl_layout.addWidget(QtWidgets.QLabel("f"), 9, 2)
-        ctrl_layout.addWidget(self.rangeslider_aris, 10, 0)
+        ctrl_layout.addWidget(QtWidgets.QLabel("Aris Playback"), 8, 0, 1, -1)
+        ctrl_layout.addWidget(self.rangeslider_aris, 9, 0)
+        ctrl_layout.addWidget(self.slider_aris_pos, 10, 0)
+        ctrl_layout.addWidget(self.spinner_aris_pos, 10, 1)
+        ctrl_layout.addWidget(QtWidgets.QLabel("f"), 10, 2)
         
-        #ctrl_layout.addWidget(QtWidgets.QLabel(""), 11, 0, 1, -1)
-        ctrl_layout.addWidget(QtWidgets.QLabel("GoPro Frame"), 12, 0, 1, -1)
+        ctrl_layout.addWidget(QtWidgets.QLabel("GoPro Playback"), 12, 0, 1, -1)
         ctrl_layout.addWidget(self.slider_gopro_pos, 13, 0)
         ctrl_layout.addWidget(self.spinner_gopro_pos, 13, 1)
         ctrl_layout.addWidget(QtWidgets.QLabel("f"), 13, 2)
-        ctrl_layout.addWidget(QtWidgets.QLabel("GoPro Offset"), 14, 0, 1, -1)
-        ctrl_layout.addWidget(self.slider_gopro_offset, 15, 0)
-        ctrl_layout.addWidget(self.spinner_gopro_offset, 15, 1)
-        ctrl_layout.addWidget(QtWidgets.QLabel("f"), 15, 2)
         
-        #ctrl_layout.addWidget(QtWidgets.QLabel(""), 16, 0, 1, -1)
-        ctrl_layout.addWidget(QtWidgets.QLabel("Gantry Progress"), 17, 0, 1, -1)
-        ctrl_layout.addWidget(self.slider_gantry_pos, 18, 0)
-        ctrl_layout.addWidget(self.spinner_gantry_pos, 18, 1)
-        ctrl_layout.addWidget(QtWidgets.QLabel("%"), 18, 2)
+        ctrl_layout.addWidget(QtWidgets.QLabel("Gantry Playback"), 15, 0, 1, -1)
+        ctrl_layout.addWidget(self.slider_gantry_pos, 16, 0)
+        ctrl_layout.addWidget(self.spinner_gantry_pos, 16, 1)
+        ctrl_layout.addWidget(QtWidgets.QLabel("‰"), 16, 2)
         
-        #ctrl_layout.addWidget(QtWidgets.QLabel(""), 19, 0, 1, -1)
+        ctrl_layout.addWidget(QtWidgets.QLabel(""), 17, 0, 1, -1)
+        
+        ctrl_layout.addWidget(QtWidgets.QLabel("GoPro Offset"), 18, 0, 1, -1)
+        ctrl_layout.addWidget(self.slider_gopro_offset, 19, 0)
+        ctrl_layout.addWidget(self.spinner_gopro_offset, 19, 1)
+        ctrl_layout.addWidget(QtWidgets.QLabel("f"), 19, 2)
+        
         ctrl_layout.addWidget(QtWidgets.QLabel("Gantry Offset"), 20, 0, 1, -1)
         ctrl_layout.addWidget(self.slider_gantry_offset_s, 21, 0)
         ctrl_layout.addWidget(self.spinner_gantry_offset_s, 21, 1)
@@ -491,7 +489,7 @@ class MainWindow(QtWidgets.QMainWindow):
         ui_layout.setStretchFactor(self.notes_widget, 100)
         
         checkbox_layout = QtWidgets.QHBoxLayout()
-        #checkbox_layout.addWidget(self.check_associate_aris)
+        checkbox_layout.addWidget(QtWidgets.QLabel("Associate with"))
         checkbox_layout.addWidget(self.check_associate_gopro)
         checkbox_layout.addWidget(self.check_associate_gantry)
         ui_layout.addLayout(checkbox_layout)
@@ -822,7 +820,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.check_associate_gantry.setChecked(association.has_gantry())
         else:
             self.notes_widget.setPlainText('')
-            #self.check_associate_aris.setChecked(True)
             self.check_associate_gopro.setChecked(True)
             self.check_associate_gantry.setChecked(True)
         
