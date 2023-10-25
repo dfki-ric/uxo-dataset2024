@@ -9,7 +9,7 @@ import numpy as np
 import cv2
 
 import aris
-from aris import FileHeaderFields as ArisFile, FrameHeaderFields as ArisFrame
+from aris import get_beamcount_from_pingmode, FileHeaderFields as ArisFile, FrameHeaderFields as ArisFrame
 
 
 class _Struct:
@@ -35,20 +35,6 @@ FileHeaderStruct = _Struct(aris.FileHeaderDefinition, ArisFile)
 FrameHeaderStruct = _Struct(aris.FrameHeaderDefinition, ArisFrame)
 
 
-def get_beamcount_from_pingmode(pingmode):
-    if pingmode in [1, 2]:
-        return 48
-
-    if pingmode in [3, 4, 5]:
-        return 96
-
-    if pingmode in [6, 7, 8]:
-        return 64
-
-    if pingmode in [9, 10, 11, 12]:
-        return 128
-    
-    return 0
 
 
 def usage():
