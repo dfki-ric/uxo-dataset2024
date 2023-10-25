@@ -85,7 +85,7 @@ def get_gantry_metadata(gantry_files_dir):
 
 
 _optical_flow_cache = {}
-def get_optical_flow(dataset_path, paramset, frame_iterator, method='lk'):
+def get_optical_flow(dataset_path):
     if dataset_path in _optical_flow_cache:
         return _optical_flow_cache[dataset_path]
     
@@ -96,116 +96,13 @@ def get_optical_flow(dataset_path, paramset, frame_iterator, method='lk'):
     data_id = os.path.splitext(basename(dataset_path))[0]
     cache_file = os.path.join(data_folder, data_id + '_flow.csv')
     
-    if os.path.isfile(cache_file):
-        print(f'Found cached flow at {cache_file}, delete to regenerate')
-        data = np.squeeze(pd.read_csv(cache_file, header=None).to_numpy())
-        _optical_flow_cache[dataset_path] = data
-        return data
-    
-    print(f'Calculating optical flow for {paramset}:{dataset_path} ...')
-    
-    def calc_overall_flow(flow):
-        # XXX could try using max instead
-        dx = np.mean(flow[..., 0])
-        dy = np.mean(flow[..., 1])
-        return np.linalg.norm((dx, dy))
-    
-    overall_flow = []
-    prev_frame = next(frame_iterator())
-    
-    # Farnerback dense flow
-    if method == 'farnerback':
-        if paramset == 'aris':
-            flow_params_farneback = dict(
-                pyr_scale = .5,
-                levels = 3,  # 5
-                winsize = 5,  # 5
-                iterations = 2,
-                poly_n = 9,
-                poly_sigma = 2,
-                flags = 0 #cv2.OPTFLOW_USE_INITIAL_FLOW,
-            )
-        elif paramset == 'gopro':
-            flow_params_farneback = dict(
-                pyr_scale = .5,
-                levels = 3,
-                winsize = 15,
-                iterations = 2,
-                poly_n = 5,
-                poly_sigma = 1.2,
-                flags = 0 #cv2.OPTFLOW_USE_INITIAL_FLOW,
-            )
-        
-        prev_flow = None        
-        for frame in frame_iterator():
-            flow = cv2.calcOpticalFlowFarneback(prev_frame, frame, None, **flow_params_farneback)
-            magnitude = calc_overall_flow(flow)
-            overall_flow.append(magnitude)
-            prev_frame = frame
-            prev_flow = flow
-    
-    # Lucas-Kanade sparse flow
-    elif method == 'lk':
-        if paramset == 'aris':
-            flow_params_lk = dict(
-                winSize = (15, 15),  # 5
-                maxLevel = 2,  # 5
-                criteria = (cv2.TERM_CRITERIA_COUNT | cv2.TERM_CRITERIA_EPS, 5, 0.03),
-            )
-            
-            feature_params = dict(
-                maxCorners = 30,
-                qualityLevel = 0.4,
-                minDistance = 10,
-                blockSize = 10,
-            )   
-        elif paramset == 'gopro':
-            flow_params_lk = dict(
-                winSize = (10, 10),
-                maxLevel = 1,
-                criteria = (cv2.TERM_CRITERIA_COUNT | cv2.TERM_CRITERIA_EPS, 5, 0.03),
-            )
-            
-            feature_params = dict(
-                maxCorners = 30,
-                qualityLevel = 0.3,
-                minDistance = 15,
-                blockSize = 15,
-            )
-        
-        feature_finder_interval = 10
-        prev_features = cv2.goodFeaturesToTrack(prev_frame, mask=None, **feature_params)
-        for i,frame in enumerate(frame_iterator()):
-            features, status, err = cv2.calcOpticalFlowPyrLK(prev_frame, frame, prev_features, None, **flow_params_lk)
-            if not np.any(status == 1):
-                prev_features = cv2.goodFeaturesToTrack(frame, mask=None, **feature_params)
-                continue
-            
-            magnitude = calc_overall_flow(features[status == 1] - prev_features[status == 1])
-            overall_flow.append(magnitude)
-            prev_frame = frame
-            if i % feature_finder_interval == 0:
-                prev_features = cv2.goodFeaturesToTrack(frame, mask=None, **feature_params)
-            else:
-                prev_features = features[status == 1].reshape(-1, 1, 2)
-            
-    else:
-        raise ValueError(f'Invalid optical flow method "{method}"')
-        
-    overall_flow = np.array(overall_flow)
-    _optical_flow_cache[dataset_path] = overall_flow
-    pd.DataFrame(overall_flow).to_csv(cache_file, header=None, index=None)
-    
-    return overall_flow
-
+    data = np.squeeze(pd.read_csv(cache_file, header=None).to_numpy())
+    _optical_flow_cache[dataset_path] = data
+    return data
 
 
 class MatchingContext:
     def __init__(self, aris_dir, gopro_file, gantry_file):
-        self.aris_dir = aris_dir
-        self.gopro_file = gopro_file
-        self.gantry_file = gantry_file
-        
         self.aris_basename = basename(aris_dir)
         self.gopro_basename = basename(gopro_file)
         self.gantry_basename = basename(gantry_file)
@@ -218,6 +115,7 @@ class MatchingContext:
         
         self.aris_file_meta, self.aris_frames_meta, self.aris_marks_meta = get_aris_metadata(aris_dir)
         self.aris_frames = sorted(os.path.join(self.aris_frames_path, f) for f in os.listdir(self.aris_frames_path) if f.lower().endswith('.pgm'))
+        self.aris_optical_flow = get_optical_flow(aris_dir)
         self._aris_frame_idx = 0
         self._aris_start_frame = 0
         self._aris_end_frame = len(self.aris_frames) - 1
@@ -235,9 +133,10 @@ class MatchingContext:
             self.aris_motion_onset = onset
         
         # Load GoPro clip
-        self.gopro_clip = cv2.VideoCapture(gopro_file)
         all_gopro_meta = get_gopro_metadata(os.path.dirname(gopro_file))
         self.gopro_meta = all_gopro_meta.loc[all_gopro_meta['file'] == self.gopro_basename].iloc[0]
+        self.gopro_clip = cv2.VideoCapture(gopro_file)
+        self.gopro_optical_flow = get_optical_flow(gopro_file)
         self.gopro_original_creation_time = parse_gopro_datetime(self.gopro_meta['creation_time'])
         self.gopro_original_creation_time_simple = self.gopro_original_creation_time.strftime('%Y-%m-%d_%H%M%S')
         self.gopro_frame_idx = -1
@@ -247,15 +146,13 @@ class MatchingContext:
         self.gopro_img = None
         
         # Load Gantry recording
-        self.gantry_data = pd.read_csv(gantry_file)
         all_gantry_meta = get_gantry_metadata(os.path.dirname(gantry_file))
         self.gantry_meta = all_gantry_meta.loc[all_gantry_meta['file'] == self.gantry_basename].iloc[0]
+        self.gantry_data = pd.read_csv(gantry_file)
         self.gantry_t0 = self.gantry_meta['start_us']
         self.gantry_duration = self.gantry_meta['end_us'] - self.gantry_t0
         self.gantry_offset = self.gantry_meta['onset_us'] - self.gantry_t0
         
-        self.aris_optical_flow = self.get_aris_flow()
-        self.gopro_optical_flow = self.get_gopro_flow()
         
         self.reload = True
     
@@ -353,27 +250,6 @@ class MatchingContext:
         yi = np.interp(timepos, t, self.gantry_data['y'])
         zi = np.interp(timepos, t, self.gantry_data['z'])
         return (xi, yi, zi), timepos
-
-    def get_aris_flow(self):
-        def aris_frame_iterator():
-            for idx in range(self.aris_frames_total):
-                yield cv2.imread(self.aris_frames[idx], cv2.IMREAD_UNCHANGED)
-        
-        return get_optical_flow(self.aris_dir, 'aris', aris_frame_iterator)
-        
-    def get_gopro_flow(self):
-        def gopro_frame_iterator():
-            for idx in range(self.gopro_frames_total):
-                self.gopro_clip.set(cv2.CAP_PROP_POS_FRAMES, idx)
-                has_frame, frame = self.gopro_clip.read()
-                if not has_frame:
-                    break
-                yield cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                
-        gopro_orig_idx = self.gopro_frame_idx
-        flow = get_optical_flow(self.gopro_file, 'gopro', gopro_frame_iterator)
-        self.gopro_clip.set(cv2.CAP_PROP_POS_FRAMES, gopro_orig_idx)
-        return flow
 
 
 
