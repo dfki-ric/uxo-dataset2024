@@ -930,7 +930,10 @@ class MainWindow(QtWidgets.QMainWindow):
             print(f'no gopro frame for {aris_frametime - self.context.aris_t0}, this may be a bug')
 
         # Flow plot
+        self.flow_plot.set_xticks(np.arange(self.context.aris_start_frame, self.context.aris_end_frame, (self.context.aris_end_frame - self.context.aris_start_frame) / 20))
         self.flow_plot.set_xlim([self.context.aris_start_frame, self.context.aris_end_frame])
+        self.flow_fig.canvas.draw_idle()
+        
         gopro_start_idx = self.context.aristime_to_gopro_idx(self.context.get_aris_frametime(self.context.aris_start_frame))
         gopro_end_idx = self.context.aristime_to_gopro_idx(self.context.get_aris_frametime(self.context.aris_end_frame))
         
