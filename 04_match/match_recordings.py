@@ -16,6 +16,8 @@ from qrangeslider import QRangeSlider
 
 
 def basename(s):
+    if s.endswith('/'):
+        s = s[:-1]
     return os.path.split(s)[-1]
 
 def gopro_sorting_key(filename):
@@ -87,7 +89,13 @@ def get_optical_flow(dataset_path, paramset, frame_iterator, method='lk'):
     if dataset_path in _optical_flow_cache:
         return _optical_flow_cache[dataset_path]
     
-    cache_file = os.path.join(dataset_path, basename(dataset_path) + '_flow.csv')
+    if os.path.isdir(dataset_path):
+        data_folder = dataset_path
+    else:
+        data_folder = os.path.dirname(dataset_path)
+    data_id = os.path.splitext(basename(dataset_path))[0]
+    cache_file = os.path.join(data_folder, data_id + '_flow.csv')
+    
     if os.path.isfile(cache_file):
         print(f'Found cached flow at {cache_file}, delete to regenerate')
         data = np.squeeze(pd.read_csv(cache_file, header=None).to_numpy())
@@ -160,7 +168,7 @@ def get_optical_flow(dataset_path, paramset, frame_iterator, method='lk'):
             
             feature_params = dict(
                 maxCorners = 30,
-                qualityLevel = 0.4,
+                qualityLevel = 0.3,
                 minDistance = 15,
                 blockSize = 15,
             )
@@ -169,6 +177,10 @@ def get_optical_flow(dataset_path, paramset, frame_iterator, method='lk'):
         prev_features = cv2.goodFeaturesToTrack(prev_frame, mask=None, **feature_params)
         for i,frame in enumerate(frame_iterator()):
             features, status, err = cv2.calcOpticalFlowPyrLK(prev_frame, frame, prev_features, None, **flow_params_lk)
+            if not np.any(status == 1):
+                prev_features = cv2.goodFeaturesToTrack(frame, mask=None, **feature_params)
+                continue
+            
             magnitude = calc_overall_flow(features[status == 1] - prev_features[status == 1])
             overall_flow.append(magnitude)
             prev_frame = frame
@@ -359,7 +371,7 @@ class MatchingContext:
                 yield cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 
         gopro_orig_idx = self.gopro_frame_idx
-        flow = get_optical_flow(os.path.dirname(self.gopro_file), 'gopro', gopro_frame_iterator)
+        flow = get_optical_flow(self.gopro_file, 'gopro', gopro_frame_iterator)
         self.gopro_clip.set(cv2.CAP_PROP_POS_FRAMES, gopro_orig_idx)
         return flow
 
@@ -950,14 +962,14 @@ class MainWindow(QtWidgets.QMainWindow):
             gopro_flow_y[start_offset:-(end_offset + 1)] = self.context.gopro_optical_flow[gopro_start_idx + start_offset : gopro_end_idx - end_offset]
         else:
             gopro_flow_y = self.context.gopro_optical_flow[gopro_start_idx : gopro_end_idx + 1]
-            
+        
         gopro_flow_x = np.arange(gopro_start_idx, gopro_end_idx + 1)
         gopro_flow_norm_f = np.max(gopro_flow_y) - np.min(gopro_flow_y)
         if np.isclose(gopro_flow_norm_f, 0.):
             gopro_flow_y_norm = gopro_flow_y
         else:
             gopro_flow_y_norm = (gopro_flow_y - np.min(gopro_flow_y)) / gopro_flow_norm_f
-    
+        
         self.flow_plot2.cla()
         self.flow_plot2.set_xlim([gopro_start_idx, gopro_end_idx])
         self.flow_plot2.plot(gopro_flow_x, gopro_flow_y_norm, 'r', label='gopro')
@@ -987,6 +999,7 @@ class MainWindow(QtWidgets.QMainWindow):
         gantry_file = self.gantry_files[gantry_idx]
         
         self.context = MatchingContext(aris_file, gopro_file, gantry_file)
+        
         self.context.aris_tick_step = self.spinner_playback_fpu.value()
         
         # We can skip so much of the gopro clip that it barely starts playing
