@@ -82,15 +82,130 @@ def get_gantry_metadata(gantry_files_dir):
     return metadata
 
 
+_optical_flow_cache = {}
+def get_optical_flow(dataset_path, paramset, frame_iterator, method='lk'):
+    if dataset_path in _optical_flow_cache:
+        return _optical_flow_cache[dataset_path]
+    
+    cache_file = os.path.join(dataset_path, basename(dataset_path) + '_flow.csv')
+    if os.path.isfile(cache_file):
+        print(f'Found cached flow at {cache_file}, delete to regenerate')
+        data = np.squeeze(pd.read_csv(cache_file, header=None).to_numpy())
+        _optical_flow_cache[dataset_path] = data
+        return data
+    
+    print(f'Calculating optical flow for {paramset}:{dataset_path} ...')
+    
+    def calc_overall_flow(flow):
+        # XXX could try using max instead
+        dx = np.mean(flow[..., 0])
+        dy = np.mean(flow[..., 1])
+        return np.linalg.norm((dx, dy))
+    
+    overall_flow = []
+    prev_frame = next(frame_iterator())
+    
+    # Farnerback dense flow
+    if method == 'farnerback':
+        if paramset == 'aris':
+            flow_params_farneback = dict(
+                pyr_scale = .5,
+                levels = 3,  # 5
+                winsize = 5,  # 5
+                iterations = 2,
+                poly_n = 9,
+                poly_sigma = 2,
+                flags = 0 #cv2.OPTFLOW_USE_INITIAL_FLOW,
+            )
+        elif paramset == 'gopro':
+            flow_params_farneback = dict(
+                pyr_scale = .5,
+                levels = 3,
+                winsize = 15,
+                iterations = 2,
+                poly_n = 5,
+                poly_sigma = 1.2,
+                flags = 0 #cv2.OPTFLOW_USE_INITIAL_FLOW,
+            )
+        
+        prev_flow = None        
+        for frame in frame_iterator():
+            flow = cv2.calcOpticalFlowFarneback(prev_frame, frame, None, **flow_params_farneback)
+            magnitude = calc_overall_flow(flow)
+            overall_flow.append(magnitude)
+            prev_frame = frame
+            prev_flow = flow
+    
+    # Lucas-Kanade sparse flow
+    elif method == 'lk':
+        if paramset == 'aris':
+            flow_params_lk = dict(
+                winSize = (15, 15),  # 5
+                maxLevel = 2,  # 5
+                criteria = (cv2.TERM_CRITERIA_COUNT | cv2.TERM_CRITERIA_EPS, 5, 0.03),
+            )
+            
+            feature_params = dict(
+                maxCorners = 30,
+                qualityLevel = 0.4,
+                minDistance = 10,
+                blockSize = 10,
+            )   
+        elif paramset == 'gopro':
+            flow_params_lk = dict(
+                winSize = (10, 10),
+                maxLevel = 1,
+                criteria = (cv2.TERM_CRITERIA_COUNT | cv2.TERM_CRITERIA_EPS, 5, 0.03),
+            )
+            
+            feature_params = dict(
+                maxCorners = 30,
+                qualityLevel = 0.4,
+                minDistance = 15,
+                blockSize = 15,
+            )
+        
+        feature_finder_interval = 10
+        prev_features = cv2.goodFeaturesToTrack(prev_frame, mask=None, **feature_params)
+        for i,frame in enumerate(frame_iterator()):
+            features, status, err = cv2.calcOpticalFlowPyrLK(prev_frame, frame, prev_features, None, **flow_params_lk)
+            magnitude = calc_overall_flow(features[status == 1] - prev_features[status == 1])
+            overall_flow.append(magnitude)
+            prev_frame = frame
+            if i % feature_finder_interval == 0:
+                prev_features = cv2.goodFeaturesToTrack(frame, mask=None, **feature_params)
+            else:
+                prev_features = features[status == 1].reshape(-1, 1, 2)
+            
+    else:
+        raise ValueError(f'Invalid optical flow method "{method}"')
+        
+    overall_flow = np.array(overall_flow)
+    _optical_flow_cache[dataset_path] = overall_flow
+    pd.DataFrame(overall_flow).to_csv(cache_file, header=None, index=None)
+    
+    return overall_flow
+
+
+
 class MatchingContext:
     def __init__(self, aris_dir, gopro_file, gantry_file):
+        self.aris_dir = aris_dir
+        self.gopro_file = gopro_file
+        self.gantry_file = gantry_file
+        
         self.aris_basename = basename(aris_dir)
         self.gopro_basename = basename(gopro_file)
         self.gantry_basename = basename(gantry_file)
         
         # Load ARIS data
+        self.aris_frames_path = os.path.join(aris_dir, 'polar')
+        if not os.path.isdir(self.aris_frames_path):
+            print(f'ARIS dataset {self.aris_basename} does not contain polar frames, using raw frames instead')
+            self.aris_frames_path = aris_dir
+        
         self.aris_file_meta, self.aris_frames_meta, self.aris_marks_meta = get_aris_metadata(aris_dir)
-        self.aris_frames = sorted(os.path.join(aris_dir, f) for f in os.listdir(aris_dir) if f.lower().endswith('.pgm'))
+        self.aris_frames = sorted(os.path.join(self.aris_frames_path, f) for f in os.listdir(self.aris_frames_path) if f.lower().endswith('.pgm'))
         self._aris_frame_idx = 0
         self._aris_start_frame = 0
         self._aris_end_frame = len(self.aris_frames) - 1
@@ -114,7 +229,7 @@ class MatchingContext:
         self.gopro_original_creation_time = parse_gopro_datetime(self.gopro_meta['creation_time'])
         self.gopro_original_creation_time_simple = self.gopro_original_creation_time.strftime('%Y-%m-%d_%H%M%S')
         self.gopro_frame_idx = -1
-        self.gopro_frames_total = self.gopro_clip.get(cv2.CAP_PROP_FRAME_COUNT)
+        self.gopro_frames_total = int(self.gopro_clip.get(cv2.CAP_PROP_FRAME_COUNT))
         self.gopro_fps = self.gopro_clip.get(cv2.CAP_PROP_FPS)
         self.gopro_offset = 0
         self.gopro_img = None
@@ -127,12 +242,10 @@ class MatchingContext:
         self.gantry_duration = self.gantry_meta['end_us'] - self.gantry_t0
         self.gantry_offset = self.gantry_meta['onset_us'] - self.gantry_t0
         
+        self.aris_optical_flow = self.get_aris_flow()
+        self.gopro_optical_flow = self.get_gopro_flow()
+        
         self.reload = True
-    
-    def get_aris_frametime(self, frame_idx):
-        # FrameTime = time of recording on PC (µs since 1970)
-        # sonarTimeStamp = time of recording on sonar (µs since 1970), not sure if synchronized to PC time
-        return self.aris_frames_meta['FrameTime'].iloc[frame_idx]
     
     @property
     def aris_frame_idx(self):
@@ -172,21 +285,36 @@ class MatchingContext:
     def aris_active_duration(self):
         return self.get_aris_frametime(self.aris_end_frame) - self.get_aris_frametime(self.aris_start_frame)
     
-    
     def tick(self):
         self.aris_img = None
         self.aris_frame_idx += self.aris_tick_step
         
-    def get_aris_frame(self):
+    def get_aris_frame(self, colorize=True):
         frametime = self.get_aris_frametime(self.aris_frame_idx)
         if self.aris_img is None:
-            self.aris_img = QtGui.QPixmap(self.aris_frames[self.aris_frame_idx])
+            if colorize:
+                frame = cv2.imread(self.aris_frames[self.aris_frame_idx])
+                frame_colorized = cv2.applyColorMap(frame, cv2.COLORMAP_TWILIGHT_SHIFTED)  # MAGMA, DEEPGREEN, OCEAN
+                h, w, channels = frame_colorized.shape
+                bytes_per_line = 3 * w
+                qimg = QtGui.QImage(frame_colorized.data, w, h, bytes_per_line, QtGui.QImage.Format_RGB888).rgbSwapped()
+                self.aris_img = QtGui.QPixmap(qimg)
+            else:
+                self.aris_img = QtGui.QPixmap(self.aris_frames[self.aris_frame_idx])
         return self.aris_img, frametime
     
-    def get_gopro_frame(self, aris_frametime):
+    def get_aris_frametime(self, frame_idx):
+        # FrameTime = time of recording on PC (µs since 1970)
+        # sonarTimeStamp = time of recording on sonar (µs since 1970), not sure if synchronized to PC time
+        return self.aris_frames_meta['FrameTime'].iloc[frame_idx]
+    
+    def aristime_to_gopro_idx(self, aris_frametime):
         # TODO aris frametime is in microseconds, then why does 1e3 seem correct for frames per SECOND?
         time_from_start = aris_frametime - self.get_aris_frametime(self.aris_start_frame)
-        new_frame_idx = int(time_from_start / 1e3 // self.gopro_fps) + self.gopro_offset
+        return int(time_from_start / 1e3 // self.gopro_fps) + self.gopro_offset
+    
+    def get_gopro_frame(self, aris_frametime):
+        new_frame_idx = self.aristime_to_gopro_idx(aris_frametime)
         
         if new_frame_idx != self.gopro_frame_idx:
             self.gopro_frame_idx = new_frame_idx
@@ -198,7 +326,7 @@ class MatchingContext:
                 self.gopro_img = QtGui.QPixmap(q_img)
         
         return self.gopro_img, self.gopro_frame_idx
-        
+    
     def get_gantry_odom(self, aris_frametime):
         time_after_onset = aris_frametime - self.get_aris_frametime(self.aris_start_frame)
         timepos = self.gantry_t0 + self.gantry_offset + time_after_onset
@@ -213,6 +341,28 @@ class MatchingContext:
         yi = np.interp(timepos, t, self.gantry_data['y'])
         zi = np.interp(timepos, t, self.gantry_data['z'])
         return (xi, yi, zi), timepos
+
+    def get_aris_flow(self):
+        def aris_frame_iterator():
+            for idx in range(self.aris_frames_total):
+                yield cv2.imread(self.aris_frames[idx], cv2.IMREAD_UNCHANGED)
+        
+        return get_optical_flow(self.aris_dir, 'aris', aris_frame_iterator)
+        
+    def get_gopro_flow(self):
+        def gopro_frame_iterator():
+            for idx in range(self.gopro_frames_total):
+                self.gopro_clip.set(cv2.CAP_PROP_POS_FRAMES, idx)
+                has_frame, frame = self.gopro_clip.read()
+                if not has_frame:
+                    break
+                yield cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                
+        gopro_orig_idx = self.gopro_frame_idx
+        flow = get_optical_flow(os.path.dirname(self.gopro_file), 'gopro', gopro_frame_iterator)
+        self.gopro_clip.set(cv2.CAP_PROP_POS_FRAMES, gopro_orig_idx)
+        return flow
+
 
 
 @dataclass
@@ -313,16 +463,26 @@ class MainWindow(QtWidgets.QMainWindow):
         mono_font.setStyleHint(QtGui.QFont.TypeWriter)
         
         # Plots
-        self.aris_canvas = QtWidgets.QLabel()
-        self.gopro_canvas = QtWidgets.QLabel()
+        self.canvas_aris = QtWidgets.QLabel()
+        self.canvas_gopro = QtWidgets.QLabel()
         
-        self.fig = Figure()
-        self.gantry_plot = self.fig.add_subplot()
+        self.gantry_fig = Figure()
+        self.gantry_plot = self.gantry_fig.add_subplot()
         self.gantry_plot.figure.tight_layout()
         
-        self.plot_canvas = FigureCanvas(self.fig)
-        self.plot_canvas.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        self.plot_canvas.updateGeometry()
+        self.canvas_gantry_plot = FigureCanvas(self.gantry_fig)
+        self.canvas_gantry_plot.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.canvas_gantry_plot.updateGeometry()
+        
+        self.flow_fig = Figure(figsize=(6, 2))
+        self.flow_plot = self.flow_fig.add_subplot()
+        self.flow_plot.figure.tight_layout()
+        self.flow_plot2 = self.flow_plot.twiny()
+        self.flow_plot2.get_xaxis().set_visible(False)
+        
+        self.canvas_flow_plot = FigureCanvas(self.flow_fig)
+        self.canvas_flow_plot.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
+        self.canvas_flow_plot.updateGeometry()
         
         # UI controls
         self.dropdown_select_aris = QtWidgets.QComboBox()
@@ -486,7 +646,7 @@ class MainWindow(QtWidgets.QMainWindow):
         ui_layout.addLayout(ctrl_layout)
         
         fps_layout = QtWidgets.QGridLayout()
-        fps_layout.addWidget(QtWidgets.QLabel("Updates per Second"), 0, 0)
+        fps_layout.addWidget(QtWidgets.QLabel("Max. Updates per Second"), 0, 0)
         fps_layout.addWidget(QtWidgets.QLabel("Frames per Update"), 0, 1)
         fps_layout.addWidget(self.spinner_playback_ups, 1, 0)
         fps_layout.addWidget(self.spinner_playback_fpu, 1, 1)
@@ -520,7 +680,7 @@ class MainWindow(QtWidgets.QMainWindow):
         table_columns_width = sum(self.table_associations.columnWidth(i) for i in range(self.table_associations.columnCount()))
         self.table_associations.setMinimumWidth(table_columns_width + 20)
 
-        # UI Layout
+        # Global UI Layout
         ui_layout_wrapper = QtWidgets.QWidget()
         ui_layout_wrapper.setLayout(ui_layout)
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
@@ -529,15 +689,13 @@ class MainWindow(QtWidgets.QMainWindow):
         splitter.setStretchFactor(100, 50)
         
         self.layout = QtWidgets.QGridLayout(self._main_widget)
-        self.layout.addWidget(self.aris_canvas, 0, 0, 2, 1, QtCore.Qt.AlignTop)
-        self.layout.addWidget(self.gopro_canvas, 0, 1, 1, 1, QtCore.Qt.AlignTop)
-        self.layout.addWidget(self.plot_canvas, 1, 1)
-        self.layout.addWidget(splitter, 0, 2, 2, 1)
-        #self.layout.addLayout(ui_layout, 0, 2, 2, 1)
-        #self.layout.addWidget(self.table_associations, 0, 3, 2, 1)
+        self.layout.addWidget(self.canvas_aris, 0, 0, 3, 1, QtCore.Qt.AlignTop)
+        self.layout.addWidget(self.canvas_gopro, 0, 1, 1, 1, QtCore.Qt.AlignTop)
+        self.layout.addWidget(self.canvas_flow_plot, 1, 1, 1, 1, QtCore.Qt.AlignTop)
+        self.layout.addWidget(self.canvas_gantry_plot, 2, 1, 1, 1, QtCore.Qt.AlignTop)
+        self.layout.addWidget(splitter, 0, 2, 3, 1)
         self.layout.setColumnStretch(2, 50)
-        #self.layout.setColumnStretch(4, 100)
-
+        
         self.setCentralWidget(self._main_widget)
         
         # Update in regular intervals
@@ -760,16 +918,49 @@ class MainWindow(QtWidgets.QMainWindow):
         # ARIS
         aris_frame, aris_frametime = self.context.get_aris_frame()
         self.slider_aris_pos.setValue(self.context.aris_frame_idx)
-        self.aris_canvas.setPixmap(aris_frame)
+        self.canvas_aris.setPixmap(aris_frame)
         
         # GoPro
         gopro_frame, gopro_frame_idx = self.context.get_gopro_frame(aris_frametime)
         if gopro_frame:
-            self.gopro_canvas.setPixmap(gopro_frame)
+            self.canvas_gopro.setPixmap(gopro_frame)
             self.slider_gopro_pos.setValue(gopro_frame_idx)
             self.spinner_gopro_pos.setValue(gopro_frame_idx)
         else:
             print(f'no gopro frame for {aris_frametime - self.context.aris_t0}, this may be a bug')
+
+        # Flow plot
+        self.flow_plot.set_xlim([self.context.aris_start_frame, self.context.aris_end_frame])
+        gopro_start_idx = self.context.aristime_to_gopro_idx(self.context.get_aris_frametime(self.context.aris_start_frame))
+        gopro_end_idx = self.context.aristime_to_gopro_idx(self.context.get_aris_frametime(self.context.aris_end_frame))
+        
+        start_offset = 0
+        if gopro_start_idx < 0:
+            start_offset = abs(gopro_start_idx)
+        
+        end_offset = 0
+        if gopro_end_idx >= self.context.gopro_frames_total:
+            end_offset = gopro_end_idx - self.context.gopro_frames_total
+            
+        if start_offset > 0 or end_offset > 0:
+            gopro_flow_y = np.zeros([gopro_end_idx - gopro_start_idx + 1])
+            gopro_flow_y[start_offset:-(end_offset + 1)] = self.context.gopro_optical_flow[gopro_start_idx + start_offset : gopro_end_idx - end_offset]
+        else:
+            gopro_flow_y = self.context.gopro_optical_flow[gopro_start_idx : gopro_end_idx + 1]
+            
+        gopro_flow_x = np.arange(gopro_start_idx, gopro_end_idx + 1)
+        gopro_flow_norm_f = np.max(gopro_flow_y) - np.min(gopro_flow_y)
+        if np.isclose(gopro_flow_norm_f, 0.):
+            gopro_flow_y_norm = gopro_flow_y
+        else:
+            gopro_flow_y_norm = (gopro_flow_y - np.min(gopro_flow_y)) / gopro_flow_norm_f
+    
+        self.flow_plot2.cla()
+        self.flow_plot2.set_xlim([gopro_start_idx, gopro_end_idx])
+        self.flow_plot2.plot(gopro_flow_x, gopro_flow_y_norm, 'r', label='gopro')
+        
+        self.flow_playback_marker.set_xdata([self.context.aris_frame_idx, self.context.aris_frame_idx])
+        self.flow_fig.canvas.draw_idle()
 
         # Gantry
         gantry_odom, gantry_time = self.context.get_gantry_odom(aris_frametime)
@@ -777,8 +968,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.gantry_offset_marker.set_xdata([gantry_time - self.context.gantry_t0, gantry_time - self.context.gantry_t0])
         self.slider_gantry_pos.setValue(gantry_progress)
         self.spinner_gantry_pos.setValue(gantry_progress)
+        self.gantry_fig.canvas.draw_idle()
         
-        self.fig.canvas.draw_idle()
         self.dirty = False
     
     def reset_context(self):
@@ -794,7 +985,6 @@ class MainWindow(QtWidgets.QMainWindow):
         
         self.context = MatchingContext(aris_file, gopro_file, gantry_file)
         self.context.aris_tick_step = self.spinner_playback_fpu.value()
-        self.gantry_plot.cla()
         
         # We can skip so much of the gopro clip that it barely starts playing
         range_min = -int(self.context.aris_duration / 10e3 // self.context.gopro_fps)
@@ -821,7 +1011,20 @@ class MainWindow(QtWidgets.QMainWindow):
         self.slider_gantry_offset_ms.setValue(gantry_offset_ms)
         self.slider_gantry_offset_us.setValue(gantry_offset_us)
         
+        # Prepare the optical flow plot. Only the gopro's flow plot will change as the offset is updated.
+        self.flow_plot.cla()
+        self.flow_plot.set_xticks(np.arange(0, self.context.aris_frames_total, self.context.aris_frames_total // 20))
+        self.flow_plot.set_xticklabels([])
+        self.flow_plot.get_xaxis().grid(which='both')
+        self.flow_plot.set_xlim([0, self.context.aris_frames_total])
+        aris_flow_x = np.arange(self.context.aris_frames_total)
+        aris_flow_y = self.context.aris_optical_flow
+        aris_flow_y_norm = (aris_flow_y - np.min(aris_flow_y)) / (np.max(aris_flow_y) - np.min(aris_flow_y))
+        self.flow_plot.plot(aris_flow_x, aris_flow_y_norm, 'b', label='aris')
+        self.flow_playback_marker = self.flow_plot.axvline(0, color='orange')
+        
         # Prepare the gantry plot. As we update, we will only move the vertical line marker across.
+        self.gantry_plot.cla()
         gantry_data = self.context.gantry_data
         self.gantry_plot.set_xlim([0, self.context.gantry_duration])
         gantry_t = gantry_data['timestamp_us'] - self.context.gantry_t0
@@ -829,7 +1032,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.gantry_plot.plot(gantry_t, gantry_data['y'], 'g', label='y')
         self.gantry_plot.plot(gantry_t, gantry_data['z'], 'b', label='z')
         self.gantry_offset_marker = self.gantry_plot.axvline(self.context.gantry_offset, color='orange')
-        self.plot_canvas.setStyleSheet('background-color:none;')  # TODO not working yet
+        self.canvas_gantry_plot.setStyleSheet('background-color:none;')  # TODO not working yet
         
         association: Association = self.association_details.get(aris_idx)
         if association and (not association.has_gopro() or association.gopro_idx == gopro_idx) and (not association.has_gantry() or association.gantry_idx == gantry_idx):
