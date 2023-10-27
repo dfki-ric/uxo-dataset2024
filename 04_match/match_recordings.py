@@ -219,7 +219,15 @@ class MatchingContext:
     def get_aris_frametime(self, frame_idx):
         # FrameTime = time of recording on PC (µs since 1970)
         # sonarTimeStamp = time of recording on sonar (µs since 1970), not sure if synchronized to PC time
-        return self.aris_frames_meta['FrameTime'].iloc[max(0, min(frame_idx, self.aris_frames_total - 1))]
+        return self.aris_frames_meta['FrameTime'].iloc[frame_idx]
+    
+    def get_aris_frametime_ext(self, frame_idx):
+        if frame_idx < 0:
+            return self.aris_t0 - abs(frame_idx) * np.mean(self.aris_frames_meta['SamplePeriod'])
+        if frame_idx >= self.aris_frames_total:
+            return self.aris_t0 + self.aris_duration + (frame_idx - self.aris_frames_total) * np.mean(self.aris_frames_meta['SamplePeriod'])
+    
+        return self.get_aris_frametime(frame_idx)
     
     def aristime_to_gopro_idx(self, aris_frametime):
         # TODO aris frametime is in microseconds, then why does 1e3 seem correct for frames per SECOND?
@@ -823,36 +831,14 @@ class MainWindow(QtWidgets.QMainWindow):
 
         # Flow plot
         idx_half_range = 75 * self.spinner_playback_fpu.value()
-        aris_start_idx = max(self.context.aris_start_frame, self.context.aris_frame_idx - idx_half_range)
-        aris_end_idx = min(self.context.aris_end_frame, self.context.aris_frame_idx + idx_half_range)
+        aris_start_idx = self.context.aris_frame_idx - idx_half_range
+        aris_end_idx = self.context.aris_frame_idx + idx_half_range
         self.flow_plot.set_xticks(np.arange(aris_start_idx, aris_end_idx, (aris_end_idx - aris_start_idx) / 20))
         self.flow_plot.set_xlim([aris_start_idx, aris_end_idx])
-        self.flow_fig.canvas.draw_idle()
         
-        gopro_start_idx = self.context.aristime_to_gopro_idx(self.context.get_aris_frametime(aris_start_idx))
-        gopro_end_idx = self.context.aristime_to_gopro_idx(self.context.get_aris_frametime(aris_end_idx))
-        
-        start_offset = 0
-        if gopro_start_idx < 0:
-            start_offset = abs(gopro_start_idx)
-        
-        end_offset = 0
-        if gopro_end_idx >= self.context.gopro_frames_total:
-            end_offset = gopro_end_idx - self.context.gopro_frames_total
-            
-        if start_offset > 0 or end_offset > 0:
-            gopro_flow_y = np.zeros([gopro_end_idx - gopro_start_idx + 1])
-            gopro_flow_y[start_offset:-(end_offset + 1)] = self.context.gopro_optical_flow[gopro_start_idx + start_offset : gopro_end_idx - end_offset]
-        else:
-            gopro_flow_y = self.context.gopro_optical_flow[gopro_start_idx : gopro_end_idx + 1]
-        
-        gopro_flow_x = np.arange(gopro_start_idx, gopro_end_idx + 1)
-        
-        self.flow_plot2.cla()
+        gopro_start_idx = self.context.aristime_to_gopro_idx(self.context.get_aris_frametime_ext(aris_start_idx))
+        gopro_end_idx = self.context.aristime_to_gopro_idx(self.context.get_aris_frametime_ext(aris_end_idx))
         self.flow_plot2.set_xlim([gopro_start_idx, gopro_end_idx])
-        self.flow_plot2.set_ylim([0, 1])
-        self.flow_plot2.plot(gopro_flow_x, gopro_flow_y, 'r', label='gopro')
-        
         self.flow_playback_marker.set_xdata([self.context.aris_frame_idx, self.context.aris_frame_idx])
         self.flow_fig.canvas.draw_idle()
 
@@ -911,12 +897,16 @@ class MainWindow(QtWidgets.QMainWindow):
         self.flow_plot.set_xticks(np.arange(0, self.context.aris_frames_total, self.context.aris_frames_total // 20))
         self.flow_plot.set_xticklabels([])
         self.flow_plot.get_xaxis().grid(which='both')
-        self.flow_plot.set_xlim([0, self.context.aris_frames_total])
-        self.flow_plot.set_ylim([0, 1])
         aris_flow_x = np.arange(self.context.aris_frames_total)
         aris_flow_y = self.context.aris_optical_flow
         self.flow_plot.plot(aris_flow_x, aris_flow_y, 'b', label='aris')
         self.flow_playback_marker = self.flow_plot.axvline(0, color='orange')
+        
+        self.flow_plot2.cla()
+        self.flow_plot2.set_ylim([0, 1])
+        gopro_flow_x = np.arange(self.context.gopro_frames_total)
+        gopro_flow_y = self.context.gopro_optical_flow
+        self.flow_plot2.plot(gopro_flow_x, gopro_flow_y, 'r', label='gopro')
         
         # Prepare the gantry plot. As we update, we will only move the vertical line marker across.
         self.gantry_plot.cla()
