@@ -96,9 +96,14 @@ def get_optical_flow(dataset_path):
     data_id = os.path.splitext(basename(dataset_path))[0]
     cache_file = os.path.join(data_folder, data_id + '_flow.csv')
     
-    data = np.squeeze(pd.read_csv(cache_file, header=None).to_numpy())
-    _optical_flow_cache[dataset_path] = data
-    return data
+    flow = np.squeeze(pd.read_csv(cache_file, header=None).to_numpy())
+    norm_f = np.quantile(flow, 0.95) - np.min(flow)
+    #norm_f = np.max(flow) - np.min(flow)
+    if not np.isclose(norm_f, 0.):
+        flow = (flow - np.min(flow)) / norm_f
+    
+    _optical_flow_cache[dataset_path] = flow
+    return flow
 
 
 class MatchingContext:
@@ -152,7 +157,6 @@ class MatchingContext:
         self.gantry_t0 = self.gantry_meta['start_us']
         self.gantry_duration = self.gantry_meta['end_us'] - self.gantry_t0
         self.gantry_offset = self.gantry_meta['onset_us'] - self.gantry_t0
-        
         
         self.reload = True
     
@@ -215,7 +219,7 @@ class MatchingContext:
     def get_aris_frametime(self, frame_idx):
         # FrameTime = time of recording on PC (µs since 1970)
         # sonarTimeStamp = time of recording on sonar (µs since 1970), not sure if synchronized to PC time
-        return self.aris_frames_meta['FrameTime'].iloc[frame_idx]
+        return self.aris_frames_meta['FrameTime'].iloc[max(0, min(frame_idx, self.aris_frames_total - 1))]
     
     def aristime_to_gopro_idx(self, aris_frametime):
         # TODO aris frametime is in microseconds, then why does 1e3 seem correct for frames per SECOND?
@@ -818,12 +822,15 @@ class MainWindow(QtWidgets.QMainWindow):
             print(f'no gopro frame for {aris_frametime - self.context.aris_t0}, this may be a bug')
 
         # Flow plot
-        self.flow_plot.set_xticks(np.arange(self.context.aris_start_frame, self.context.aris_end_frame, (self.context.aris_end_frame - self.context.aris_start_frame) / 20))
-        self.flow_plot.set_xlim([self.context.aris_start_frame, self.context.aris_end_frame])
+        idx_half_range = 75 * self.spinner_playback_fpu.value()
+        aris_start_idx = max(self.context.aris_start_frame, self.context.aris_frame_idx - idx_half_range)
+        aris_end_idx = min(self.context.aris_end_frame, self.context.aris_frame_idx + idx_half_range)
+        self.flow_plot.set_xticks(np.arange(aris_start_idx, aris_end_idx, (aris_end_idx - aris_start_idx) / 20))
+        self.flow_plot.set_xlim([aris_start_idx, aris_end_idx])
         self.flow_fig.canvas.draw_idle()
         
-        gopro_start_idx = self.context.aristime_to_gopro_idx(self.context.get_aris_frametime(self.context.aris_start_frame))
-        gopro_end_idx = self.context.aristime_to_gopro_idx(self.context.get_aris_frametime(self.context.aris_end_frame))
+        gopro_start_idx = self.context.aristime_to_gopro_idx(self.context.get_aris_frametime(aris_start_idx))
+        gopro_end_idx = self.context.aristime_to_gopro_idx(self.context.get_aris_frametime(aris_end_idx))
         
         start_offset = 0
         if gopro_start_idx < 0:
@@ -840,15 +847,11 @@ class MainWindow(QtWidgets.QMainWindow):
             gopro_flow_y = self.context.gopro_optical_flow[gopro_start_idx : gopro_end_idx + 1]
         
         gopro_flow_x = np.arange(gopro_start_idx, gopro_end_idx + 1)
-        gopro_flow_norm_f = np.max(gopro_flow_y) - np.min(gopro_flow_y)
-        if np.isclose(gopro_flow_norm_f, 0.):
-            gopro_flow_y_norm = gopro_flow_y
-        else:
-            gopro_flow_y_norm = (gopro_flow_y - np.min(gopro_flow_y)) / gopro_flow_norm_f
         
         self.flow_plot2.cla()
         self.flow_plot2.set_xlim([gopro_start_idx, gopro_end_idx])
-        self.flow_plot2.plot(gopro_flow_x, gopro_flow_y_norm, 'r', label='gopro')
+        self.flow_plot2.set_ylim([0, 1])
+        self.flow_plot2.plot(gopro_flow_x, gopro_flow_y, 'r', label='gopro')
         
         self.flow_playback_marker.set_xdata([self.context.aris_frame_idx, self.context.aris_frame_idx])
         self.flow_fig.canvas.draw_idle()
@@ -909,10 +912,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.flow_plot.set_xticklabels([])
         self.flow_plot.get_xaxis().grid(which='both')
         self.flow_plot.set_xlim([0, self.context.aris_frames_total])
+        self.flow_plot.set_ylim([0, 1])
         aris_flow_x = np.arange(self.context.aris_frames_total)
         aris_flow_y = self.context.aris_optical_flow
-        aris_flow_y_norm = (aris_flow_y - np.min(aris_flow_y)) / (np.max(aris_flow_y) - np.min(aris_flow_y))
-        self.flow_plot.plot(aris_flow_x, aris_flow_y_norm, 'b', label='aris')
+        self.flow_plot.plot(aris_flow_x, aris_flow_y, 'b', label='aris')
         self.flow_playback_marker = self.flow_plot.axvline(0, color='orange')
         
         # Prepare the gantry plot. As we update, we will only move the vertical line marker across.
