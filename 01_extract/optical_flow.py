@@ -34,6 +34,7 @@ def calc_optical_flow_lk(frame_iterator, method, flow_params, feature_params=Non
     for i,frame in enumerate(frame_iterator()):
         features, status, err = cv2.calcOpticalFlowPyrLK(prev_frame, frame, prev_features, None, **flow_params)
         if not np.any(status == 1):
+            overall_flow.append(0.)
             prev_features = cv2.goodFeaturesToTrack(frame, mask=None, **feature_params)
             continue
         

@@ -342,6 +342,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.gantry_associated = set()
         self.association_details = {}
         
+        self.out_file_path = None
+        
         # Keep track of the files we're using
         self.aris_base_dir = aris_base_dir
         self.gopro_base_dir = gopro_base_dir
@@ -492,8 +494,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.button_associate = QtWidgets.QPushButton('&Associate')
         self.button_associate.clicked.connect(self._handle_associate_button)
         
-        self.button_save = QtWidgets.QPushButton('&Save')
-        self.button_save.clicked.connect(self._handle_save_button)
+        #self.button_save = QtWidgets.QPushButton('&Save')
+        #self.button_save.clicked.connect(self._handle_save_button)
         
         # Interactive elements layout
         ctrl_layout = QtWidgets.QGridLayout()
@@ -568,7 +570,7 @@ class MainWindow(QtWidgets.QMainWindow):
         ui_layout.addLayout(checkbox_layout)
         
         ui_layout.addWidget(self.button_associate)
-        ui_layout.addWidget(self.button_save)
+        #ui_layout.addWidget(self.button_save)
         
         # Table
         self.table_associations = QtWidgets.QTableWidget(len(self.aris_data_dirs), 3)
@@ -695,6 +697,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self.table_associations.setItem(aris_idx, 2, QtWidgets.QTableWidgetItem(self.context.gantry_basename))
         
         self.association_details[aris_idx] = association
+        self.update_save_file()
         
         
         # XXX Automatically skipping to next entries seemd counter-intuitive
@@ -787,14 +790,15 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             return
 
-    def _handle_save_button(self):
+    def update_save_file(self):
         self.update_timer.stop()
         
-        out_file_path, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Associations', '', 'Csv Files(*.csv)')
-        if not out_file_path:
-            return
+        if not self.out_file_path:
+            self.out_file_path, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Associations', '', 'Csv Files(*.csv)')
+            if not self.out_file_path:
+                return
         
-        with open(out_file_path, 'w') as out_file:
+        with open(self.out_file_path, 'w') as out_file:
             writer = csv.DictWriter(out_file, Association.__dataclass_fields__.keys())
             writer.writeheader()
             writer.writerows(asdict(a) for a in self.association_details)

@@ -59,3 +59,4 @@ if __name__ == '__main__':
     
     out_file = os.path.join(args.aris_data_dir, os.path.split(args.aris_data_dir)[-1] + '_flow.csv')
     pd.DataFrame(flow).to_csv(out_file, header=None, index=None)
+    #print(flow.shape)
