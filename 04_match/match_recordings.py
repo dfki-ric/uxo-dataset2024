@@ -222,7 +222,6 @@ class MatchingContext:
         return self.aris_frames_meta['FrameTime'].iloc[frame_idx]
     
     def get_aris_frametime_ext(self, frame_idx):
-        print(frame_idx)
         if frame_idx < 0:
             # Note: in contrast to what the header definitions claim, FrameRate is in frames per SECOND!
             return self.aris_t0 - abs(frame_idx) / np.mean(self.aris_frames_meta['FrameRate']) * 1e6
