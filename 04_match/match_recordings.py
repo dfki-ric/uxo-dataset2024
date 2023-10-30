@@ -222,10 +222,12 @@ class MatchingContext:
         return self.aris_frames_meta['FrameTime'].iloc[frame_idx]
     
     def get_aris_frametime_ext(self, frame_idx):
+        print(frame_idx)
         if frame_idx < 0:
-            return self.aris_t0 - abs(frame_idx) * np.mean(self.aris_frames_meta['SamplePeriod'])
+            # Note: in contrast to what the header definitions claim, FrameRate is in frames per SECOND!
+            return self.aris_t0 - abs(frame_idx) / np.mean(self.aris_frames_meta['FrameRate']) * 1e6
         if frame_idx >= self.aris_frames_total:
-            return self.aris_t0 + self.aris_duration + (frame_idx - self.aris_frames_total) * np.mean(self.aris_frames_meta['SamplePeriod'])
+            return self.aris_t0 + self.aris_duration + (frame_idx - self.aris_frames_total) / np.mean(self.aris_frames_meta['FrameRate']) * 1e6
     
         return self.get_aris_frametime(frame_idx)
     
@@ -839,6 +841,7 @@ class MainWindow(QtWidgets.QMainWindow):
         gopro_start_idx = self.context.aristime_to_gopro_idx(self.context.get_aris_frametime_ext(aris_start_idx))
         gopro_end_idx = self.context.aristime_to_gopro_idx(self.context.get_aris_frametime_ext(aris_end_idx))
         self.flow_plot2.set_xlim([gopro_start_idx, gopro_end_idx])
+        
         self.flow_playback_marker.set_xdata([self.context.aris_frame_idx, self.context.aris_frame_idx])
         self.flow_fig.canvas.draw_idle()
 
@@ -899,14 +902,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.flow_plot.get_xaxis().grid(which='both')
         aris_flow_x = np.arange(self.context.aris_frames_total)
         aris_flow_y = self.context.aris_optical_flow
-        self.flow_plot.plot(aris_flow_x, aris_flow_y, 'b', label='aris')
+        self.flow_plot.plot(aris_flow_x, aris_flow_y, 'blue', label='aris')
         self.flow_playback_marker = self.flow_plot.axvline(0, color='orange')
         
         self.flow_plot2.cla()
         self.flow_plot2.set_ylim([0, 1])
         gopro_flow_x = np.arange(self.context.gopro_frames_total)
         gopro_flow_y = self.context.gopro_optical_flow
-        self.flow_plot2.plot(gopro_flow_x, gopro_flow_y, 'r', label='gopro')
+        self.flow_plot2.plot(gopro_flow_x, gopro_flow_y, 'grey', label='gopro')
         
         # Prepare the gantry plot. As we update, we will only move the vertical line marker across.
         self.gantry_plot.cla()
