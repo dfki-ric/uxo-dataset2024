@@ -106,6 +106,11 @@ def get_optical_flow(dataset_path):
     return flow
 
 
+def smooth_data(data, window_length):
+    cumsum_vec = np.cumsum(np.insert(data, 0, 0)) 
+    return (cumsum_vec[window_length:] - cumsum_vec[:-window_length]) / window_length
+
+
 class MatchingContext:
     def __init__(self, aris_dir, gopro_file, gantry_file):
         self.aris_basename = basename(aris_dir)
@@ -794,14 +799,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self.update_timer.stop()
         
         if not self.out_file_path:
-            self.out_file_path, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Associations', '', 'Csv Files(*.csv)')
-            if not self.out_file_path:
+            out_file_path, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Associations', '', 'Csv Files(*.csv)')
+            if self.out_file_path:
                 return
+            if not out_file_path.lower().endswith('.csv'):
+                out_file_path += '.csv'
+            self.out_file_path = out_file_path
         
         with open(self.out_file_path, 'w') as out_file:
             writer = csv.DictWriter(out_file, Association.__dataclass_fields__.keys())
             writer.writeheader()
-            writer.writerows(asdict(a) for a in self.association_details)
+            writer.writerows(asdict(a) for a in self.association_details.values())
 
 
     def ensure_update(self):
@@ -885,7 +893,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.slider_gantry_pos.setMaximum(1000)
         self.spinner_gantry_pos.setMaximum(1000)
         
-        self.slider_gopro_offset.setRange(range_min, range_max)
+        self.slider_gopro_offset.setRange(-self.context.gopro_frames_total, self.context.gopro_frames_total)
         self.spinner_gopro_offset.setRange(range_min, range_max)
         
         self.rangeslider_aris.setMin(0)
@@ -903,15 +911,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.flow_plot.set_xticks(np.arange(0, self.context.aris_frames_total, self.context.aris_frames_total // 20))
         self.flow_plot.set_xticklabels([])
         self.flow_plot.get_xaxis().grid(which='both')
-        aris_flow_x = np.arange(self.context.aris_frames_total)
-        aris_flow_y = self.context.aris_optical_flow
+        aris_flow_x = np.arange(self.context.aris_frames_total - 2)
+        aris_flow_y = smooth_data(self.context.aris_optical_flow, 3)
         self.flow_plot.plot(aris_flow_x, aris_flow_y, 'blue', label='aris')
         self.flow_playback_marker = self.flow_plot.axvline(0, color='orange')
         
         self.flow_plot2.cla()
         self.flow_plot2.set_ylim([0, 1])
-        gopro_flow_x = np.arange(self.context.gopro_frames_total)
-        gopro_flow_y = self.context.gopro_optical_flow
+        gopro_flow_x = np.arange(self.context.gopro_frames_total - 2)
+        gopro_flow_y = smooth_data(self.context.gopro_optical_flow, 3)
         self.flow_plot2.plot(gopro_flow_x, gopro_flow_y, 'grey', label='gopro')
         
         # Prepare the gantry plot. As we update, we will only move the vertical line marker across.
