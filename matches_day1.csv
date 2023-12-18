@@ -1,0 +1,113 @@
+aris_idx,gopro_idx,gantry_idx,aris_onset,gopro_offset,gantry_offset,notes
+7,1,0,530,-184,4251532.333333334,"- Trajectory: L to R (z: 750)
+- Tilt: -22°
+- roll: 0°
+- Min Transmit
+- 10dB"
+8,2,1,124,-40,9306333.333333334,"- Trajectory: L to R (z: 750)
+- Tilt: -22°
+- Roll: 0°
+- Min Transmit
+- 10dB"
+9,3,2,175,-160,-72667.66666666698,"- Trajectory: L to R (z: 750)
+- Tilt: -22°
+- roll: 0°
+- max Transmit
+- 5dB"
+11,4,4,116,-90,2933999.0,"- Trajectory: L to R (z: 750)
+- Tilt: -22°
+- roll: 90°
+- Min Transmit
+- 10dB
+- repeat of previous recording"
+12,5,5,129,-60,4029000.0,"- Trajectory: L to R (z: 725)
+- Tilt: -26°
+- roll: 0°
+- Min Transmit
+- 10dB"
+13,6,6,107,-166,-69866.66666666605,"- Trajectory: L to R (z: 725)
+- Tilt: -26°
+- roll: 0°
+- Min Transmit
+- 10dB
+- repeat (main data)"
+14,7,7,92,-123,1035900.0,"- Trajectory: L to R (z: 725)
+- Tilt: -26°
+- roll: 0°
+- Max Transmit
+- 5dB"
+15,8,8,119,-31,3778633.3333333335,"- Trajectory: L to R (z: 725)
+- Tilt: -26°
+- roll: 90°
+- Min Transmit
+- 10dB"
+16,9,9,92,-105,480499.99999999953,"- Trajectory: L to R (z: 500)
+- Tilt: -34°
+- roll: 0°
+- Min Transmit
+- 10dB"
+17,10,10,84,-117,-184901.0,"- Trajectory: L to R (z: 500)
+- Tilt: -34°
+- roll: 0°
+- Min Transmit
+- 10dB
+- repeat (main data)"
+18,12,11,96,-128,354066.66666666605,"- Trajectory: L to R (z: 500)
+- Tilt: -34°
+- roll: 0°
+- Max Transmit
+- 5dB"
+19,11,12,80,-7,4032432.3333333335,"- Trajectory: L to R (z: 500)
+- Tilt: -34°
+- roll: 90°
+- Min Transmit
+- 10dB"
+20,13,13,98,-37,2719433.3333333335,"- Trajectory: L to R (z: 250)
+- Tilt: -42°
+- roll: 0°
+- Min Transmit
+- 10dB"
+21,14,14,94,-90,1169000.0,"- Trajectory: L to R (z: 250)
+- Tilt: -42°
+- roll: 0°
+- Min Transmit
+- 10dB
+- repeat (main data)"
+22,-1,15,78,0,3655999.0,"- Trajectory: L to R (z: 250)
+- Tilt: -42°
+- roll: 0°
+- Max Transmit
+- 5dB
+- gopro footage lost"
+24,16,17,61,-161,-560033.333333333,"- Trajectory: flyby (z: 250, y: 1420)
+- Tilt: -60°
+- Roll: 0°
+- Pan: -180°
+- Min Transmit
+- 10dB
+- incorrect gopro offset"
+23,15,16,82,-160,-1713666.666666667,"- Trajectory: L to R (z: 250)
+- Tilt: -42°
+- roll: 90°
+- Min Transmit
+- 10dB"
+26,-1,18,82,0,3719001.0,"- Trajectory: flyby (z: 250, y: 1420)
+- Tilt: -90°
+- Roll: 0°
+- Pan: -180°
+- Min Transmit
+- 10dB
+- gopro footage lost"
+27,-1,19,93,0,4952999.0,"- Trajectory: flyby (z: 250, y: 1420)
+- Tilt: -60°
+- Roll: 0°
+- Pan: -180°
+- Max Transmit
+- 5dB
+- gopro footage lost"
+10,0,3,129,-105,4248250.0,"- Trajectory: L to R (z: 750)
+- Tilt: -22°
+- roll: 90°
+- Min Transmit
+- 10dB
+- lost track of object"

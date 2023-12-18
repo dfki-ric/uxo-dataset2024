@@ -160,8 +160,9 @@ class MatchingContext:
         self.gantry_meta = all_gantry_meta.loc[all_gantry_meta['file'] == self.gantry_basename].iloc[0]
         self.gantry_data = pd.read_csv(gantry_file)
         self.gantry_t0 = self.gantry_meta['start_us']
+        self.gantry_onset = self.gantry_meta['onset_us']
         self.gantry_duration = self.gantry_meta['end_us'] - self.gantry_t0
-        self.gantry_offset = self.gantry_meta['onset_us'] - self.gantry_t0
+        self.gantry_offset = self.gantry_onset - self.gantry_t0
         
         self.reload = True
     
@@ -252,6 +253,14 @@ class MatchingContext:
                 self.gopro_img = QtGui.QPixmap(q_img)
         
         return self.gopro_img, self.gopro_frame_idx
+    
+    def get_usable_gopro_range(self):
+        # We can skip so much of the gopro clip that it barely starts playing
+        range_min = -int(self.aris_duration / 10e3 // self.gopro_fps)
+        # But we can also delay playback so much that it barely starts playing
+        range_max = int(self.gopro_frames_total)
+        
+        return range_min, range_max
     
     def get_gantry_odom(self, aris_frametime):
         time_after_onset = aris_frametime - self.get_aris_frametime(self.aris_start_frame)
@@ -417,6 +426,8 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # ARIS
         self.slider_aris_pos = MySlider()
+        self.slider_aris_pos.setSingleStep(5)
+        self.slider_aris_pos.setPageStep(15)
         self.spinner_aris_pos = QtWidgets.QSpinBox()
         connect_slider_spinner(self.slider_aris_pos, self.spinner_aris_pos, self._on_aris_pos_changed)
         
@@ -433,8 +444,8 @@ class MainWindow(QtWidgets.QMainWindow):
         connect_slider_spinner(self.slider_gopro_pos, self.spinner_gopro_pos, lambda v: None)
         
         self.slider_gopro_offset = MySlider()
-        self.slider_gopro_offset.setSingleStep(1)
-        self.slider_gopro_offset.setPageStep(10)
+        self.slider_gopro_offset.setSingleStep(10)
+        self.slider_gopro_offset.setPageStep(25)
         self.spinner_gopro_offset = QtWidgets.QSpinBox()
         self.spinner_gopro_offset.setSingleStep(1)
         connect_slider_spinner(self.slider_gopro_offset, self.spinner_gopro_offset, self._on_gopro_offset_changed)
@@ -472,6 +483,10 @@ class MainWindow(QtWidgets.QMainWindow):
         self.spinner_gantry_offset_us = QtWidgets.QSpinBox()
         self.spinner_gantry_offset_us.setRange(-1000, 1000)
         connect_slider_spinner(self.slider_gantry_offset_us, self.spinner_gantry_offset_us, self._on_gantry_offset_changed)
+        
+        self.check_gantry_offset_coupled = QtWidgets.QCheckBox('Couple Gantry and GoPro offsets')
+        #self.check_gantry_offset_coupled.setChecked(True)
+        self.check_gantry_offset_coupled.stateChanged.connect(self._on_couple_offsets)
         
         # Playback
         self.spinner_playback_fpu = QtWidgets.QSpinBox()
@@ -547,6 +562,8 @@ class MainWindow(QtWidgets.QMainWindow):
         ctrl_layout.addWidget(self.slider_gantry_offset_us, 23, 0)
         ctrl_layout.addWidget(self.spinner_gantry_offset_us, 23, 1)
         ctrl_layout.addWidget(QtWidgets.QLabel("µs"), 23, 2)
+        
+        ctrl_layout.addWidget(self.check_gantry_offset_coupled, 24, 0, 1, -1)
         
         # Overall UI panel layout
         ui_layout = QtWidgets.QVBoxLayout()
@@ -629,10 +646,32 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_gopro_offset_changed(self, val):
         self.context.gopro_offset = val
         
+        if self.check_gantry_offset_coupled.isChecked():
+            rmin, rmax = self.context.get_usable_gopro_range()
+            offset_us = self.context.gantry_onset - self.context.gantry_t0 + np.clip(val, rmin, rmax) / self.context.gopro_fps * 1e6
+            
+            self.context.gantry_offset = offset_us
+            self.slider_gantry_offset_s.setValue(int(offset_us // 1e6))
+            self.slider_gantry_offset_ms.setValue(int((offset_us % 1e6) // 1e3))
+            self.slider_gantry_offset_us.setValue(int(offset_us % 1e3))
+        
     def _on_gantry_offset_changed(self, val):
         self.context.gantry_offset = self.slider_gantry_offset_s.value() * 1e6 \
                                     + self.slider_gantry_offset_ms.value() * 1e3 \
                                     + self.slider_gantry_offset_us.value()
+                                    
+    def _on_couple_offsets(self, couple_offsets):
+        gantry_independent = not couple_offsets
+        
+        self.slider_gantry_offset_s.setEnabled(gantry_independent)
+        self.spinner_gantry_offset_s.setEnabled(gantry_independent)
+        self.slider_gantry_offset_ms.setEnabled(gantry_independent)
+        self.spinner_gantry_offset_ms.setEnabled(gantry_independent)
+        self.slider_gantry_offset_us.setEnabled(gantry_independent)
+        self.spinner_gantry_offset_us.setEnabled(gantry_independent)
+        
+        if couple_offsets:
+            self._on_gopro_offset_changed(self.context.gopro_offset)
         
     @QtCore.pyqtSlot(int)
     def _on_playback_fpu_changed(self, val):
@@ -795,9 +834,9 @@ class MainWindow(QtWidgets.QMainWindow):
             return
 
     def update_save_file(self):
-        self.update_timer.stop()
-        
         if not self.out_file_path:
+            self.playing = False
+            
             out_file_path, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Associations', '', 'Csv Files(*.csv)')
             if self.out_file_path:
                 return
@@ -880,11 +919,6 @@ class MainWindow(QtWidgets.QMainWindow):
         
         self.context.aris_tick_step = self.spinner_playback_fpu.value()
         
-        # We can skip so much of the gopro clip that it barely starts playing
-        range_min = -int(self.context.aris_duration / 10e3 // self.context.gopro_fps)
-        # But we can also delay playback so much that it barely starts playing
-        range_max = int(self.context.gopro_frames_total)
-        
         self.slider_aris_pos.setMaximum(int(self.context.aris_frames_total - 1))
         self.spinner_aris_pos.setMaximum(int(self.context.aris_frames_total - 1))
         self.slider_gopro_pos.setMaximum(int(self.context.gopro_frames_total - 1))
@@ -892,7 +926,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.slider_gantry_pos.setMaximum(1000)
         self.spinner_gantry_pos.setMaximum(1000)
         
-        self.slider_gopro_offset.setRange(-self.context.gopro_frames_total, self.context.gopro_frames_total)
+        range_min, range_max = self.context.get_usable_gopro_range()
+        self.slider_gopro_offset.setRange(range_min, range_max)
         self.spinner_gopro_offset.setRange(range_min, range_max)
         
         self.rangeslider_aris.setMin(0)
