@@ -236,9 +236,8 @@ class MatchingContext:
         return self.get_aris_frametime(frame_idx)
     
     def aristime_to_gopro_idx(self, aris_frametime):
-        # TODO aris frametime is in microseconds, then why does 1e3 seem correct for frames per SECOND?
         time_from_start = aris_frametime - self.get_aris_frametime(self.aris_start_frame)
-        return int(time_from_start / 1e3 // self.gopro_fps) + self.gopro_offset
+        return int(time_from_start / 1e6 * self.gopro_fps) + self.gopro_offset
     
     def get_gopro_frame(self, aris_frametime):
         new_frame_idx = self.aristime_to_gopro_idx(aris_frametime)
