@@ -380,14 +380,18 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Plots
         self.canvas_aris = QtWidgets.QLabel()
+        #self.canvas_aris.setScaledContents(True)
+        self.canvas_aris.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self.canvas_gopro = QtWidgets.QLabel()
+        #self.canvas_gopro.setScaledContents(True)
+        self.canvas_gopro.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         
         self.gantry_fig = Figure()
         self.gantry_plot = self.gantry_fig.add_subplot()
         self.gantry_plot.figure.tight_layout()
         
         self.canvas_gantry_plot = FigureCanvas(self.gantry_fig)
-        self.canvas_gantry_plot.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.canvas_gantry_plot.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Minimum)
         self.canvas_gantry_plot.updateGeometry()
         
         self.flow_fig = Figure(figsize=(6, 2))
@@ -612,12 +616,17 @@ class MainWindow(QtWidgets.QMainWindow):
         splitter.addWidget(self.table_associations)
         splitter.setStretchFactor(100, 50)
         
+        data_layout = QtWidgets.QVBoxLayout()
+        data_layout.addWidget(self.canvas_gopro, alignment=QtCore.Qt.AlignTop)
+        data_layout.addWidget(self.canvas_flow_plot)
+        data_layout.addWidget(self.canvas_gantry_plot)
+        
         self.layout = QtWidgets.QGridLayout(self._main_widget)
-        self.layout.addWidget(self.canvas_aris, 0, 0, 3, 1, QtCore.Qt.AlignTop)
-        self.layout.addWidget(self.canvas_gopro, 0, 1, 1, 1, QtCore.Qt.AlignTop)
-        self.layout.addWidget(self.canvas_flow_plot, 1, 1, 1, 1, QtCore.Qt.AlignTop)
-        self.layout.addWidget(self.canvas_gantry_plot, 2, 1, 1, 1, QtCore.Qt.AlignTop)
-        self.layout.addWidget(splitter, 0, 2, 3, 1)
+        self.layout.addWidget(self.canvas_aris, 0, 0, 1, 1, QtCore.Qt.AlignTop)
+        self.layout.addLayout(data_layout, 0, 1, 1, 1, QtCore.Qt.AlignTop)
+        self.layout.addWidget(splitter, 0, 2, 1, 1)
+        #self.layout.setColumnStretch(0, 100)
+        #self.layout.setColumnStretch(1, 100)
         self.layout.setColumnStretch(2, 50)
         
         self.setCentralWidget(self._main_widget)
@@ -770,7 +779,7 @@ class MainWindow(QtWidgets.QMainWindow):
             
             associated = '*' if idx in self.aris_associated else ' '
             motion_onset = 'm' if 'onset' in marks else ' '
-            aris_items.append(f'({associated}) ({motion_onset})  {basename(item)}')
+            aris_items.append(f'({associated}) ({motion_onset})  {idx:02}: {basename(item)}')
         
         # Context may not be initialized yet, so don't use context.get_aris_frametime()
         current_aris_start = aris_frames_meta['FrameTime'][0]
@@ -796,7 +805,7 @@ class MainWindow(QtWidgets.QMainWindow):
             associated = '*' if idx in self.gopro_associated else ' '
             overlapping = 'x' if gopro_clip_start < current_aris_end and gopro_clip_end > current_aris_start else ' '
             # TODO overlapping is not useful because for some reason all footage from day1 has the same creation date
-            gopro_items.append(f'({associated}) ( )  {gopro_datetime_simple}  {basename(item)}')
+            gopro_items.append(f'({associated}) ( )  {idx:02}: {gopro_datetime_simple}  {basename(item)}')
         
         # Gantry
         gantry_items = []
@@ -809,7 +818,7 @@ class MainWindow(QtWidgets.QMainWindow):
             # Mark gantry files which have timestamps overlapping with selected ARIS file
             associated = '*' if idx in self.gantry_associated else ' '
             overlapping = 'x' if gantry_file_start < current_aris_end and gantry_file_end > current_aris_start else ' '
-            gantry_items.append(f'({associated}) ({overlapping})  {basename(item)}')
+            gantry_items.append(f'({associated}) ({overlapping})  {idx:02}: {basename(item)}')
         
         def repopulate(dropdown, items):
             idx = max(0, dropdown.currentIndex())

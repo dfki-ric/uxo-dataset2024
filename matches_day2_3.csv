@@ -1,0 +1,7 @@
+aris_idx,gopro_idx,gantry_idx,aris_onset,gopro_offset,gantry_offset,notes
+20,18,17,58,0,3062000.0,"- Trajectory: flyby (z: 250, y: 1250)
+- Tilt: -60°
+- Roll: 0°
+- Pan: -180°
+- Min Transmit
+- 15dB"
