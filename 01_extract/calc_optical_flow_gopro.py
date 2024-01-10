@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import sys
 import os
 import cv2
 import pandas as pd
@@ -35,7 +36,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('gopro_file')
     parser.add_argument('-m', '--method', choices=['lk', 'farnerback'], default='lk')
+    parser.add_argument('-r', '--recalc', action=argparse.BooleanOptionalAction, default=True)
     args = parser.parse_args()
+    
+    out_file = os.path.join(os.path.dirname(args.gopro_file), os.path.splitext(os.path.basename(args.gopro_file))[0] + '_flow.csv')
+    if not args.recalc and os.path.isfile(out_file):
+        print(f'{out_file} already exists, skipping')
+        sys.exit(0)
     
     clip = cv2.VideoCapture(args.gopro_file)
     num_frames = int(clip.get(cv2.CAP_PROP_FRAME_COUNT))
@@ -55,5 +62,4 @@ if __name__ == '__main__':
     else:
         raise ValueError('Invalid method')
 
-    out_file = os.path.join(os.path.dirname(args.gopro_file), os.path.splitext(os.path.basename(args.gopro_file))[0] + '_flow.csv')
     pd.DataFrame(flow).to_csv(out_file, header=None, index=None)

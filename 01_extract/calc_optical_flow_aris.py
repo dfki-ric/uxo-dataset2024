@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import sys
 import os
 import cv2
 import pandas as pd
@@ -35,10 +36,16 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('aris_data_dir')
     parser.add_argument('-m', '--method', choices=['lk', 'farnerback'], default='lk')
+    parser.add_argument('-r', '--recalc', action=argparse.BooleanOptionalAction, default=True)
     args = parser.parse_args()
     
     if args.aris_data_dir.endswith('/'):
         args.aris_data_dir = args.aris_data_dir[:-1]
+        
+    out_file = os.path.join(args.aris_data_dir, os.path.split(args.aris_data_dir)[-1] + '_flow.csv')
+    if not args.recalc and os.path.isfile(out_file):
+        print(f'{out_file} already exists, skipping')
+        sys.exit(0)
     
     frames_path = os.path.join(args.aris_data_dir, 'polar')
     if not os.path.isdir(frames_path):
@@ -57,6 +64,6 @@ if __name__ == '__main__':
     else:
         raise ValueError('Invalid method')
     
-    out_file = os.path.join(args.aris_data_dir, os.path.split(args.aris_data_dir)[-1] + '_flow.csv')
+    
     pd.DataFrame(flow).to_csv(out_file, header=None, index=None)
     #print(flow.shape)
