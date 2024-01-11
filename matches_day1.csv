@@ -87,7 +87,7 @@ data/aris/day1/2023-09-20_180722,21,94,data/gantry/day1/2023-09-20-18-07-24_100l
 - Min Transmit
 - 10dB
 - repeat (main data)"
-data/aris/day1/2023-09-20_180944,22,78,data/gantry/day1/2023-09-20-18-09-45_100lbs_bomb.csv,15,3655999.0,data/gopro/day1/clips_sd/GX030010_06.mp4,-1,0,"- target: 100lbs bomb
+data/aris/day1/2023-09-20_180944,22,78,data/gantry/day1/2023-09-20-18-09-45_100lbs_bomb.csv,15,3655999.0,,-1,0,"- target: 100lbs bomb
 - Trajectory: L to R (z: 250)
 - Tilt: -42°
 - roll: 0°
@@ -108,7 +108,7 @@ data/aris/day1/2023-09-20_181139,23,82,data/gantry/day1/2023-09-20-18-11-40_100l
 - roll: 90°
 - Min Transmit
 - 10dB"
-data/aris/day1/2023-09-20_182600,26,82,data/gantry/day1/2023-09-20-18-26-03_100lbs_bomb.csv,18,3719001.0,data/gopro/day1/clips_sd/GX030010_06.mp4,-1,0,"- target: 100lbs bomb
+data/aris/day1/2023-09-20_182600,26,82,data/gantry/day1/2023-09-20-18-26-03_100lbs_bomb.csv,18,3719001.0,,-1,0,"- target: 100lbs bomb
 - Trajectory: flyby (z: 250, y: 1420)
 - Tilt: -90°
 - Roll: 0°
@@ -116,7 +116,7 @@ data/aris/day1/2023-09-20_182600,26,82,data/gantry/day1/2023-09-20-18-26-03_100l
 - Min Transmit
 - 10dB
 - gopro footage lost"
-data/aris/day1/2023-09-20_182843,27,93,data/gantry/day1/2023-09-20-18-28-44_100lbs_bomb.csv,19,4952999.0,data/gopro/day1/clips_sd/GX030010_06.mp4,-1,0,"- target: 100lbs bomb
+data/aris/day1/2023-09-20_182843,27,93,data/gantry/day1/2023-09-20-18-28-44_100lbs_bomb.csv,19,4952999.0,,-1,0,"- target: 100lbs bomb
 - Trajectory: flyby (z: 250, y: 1420)
 - Tilt: -60°
 - Roll: 0°

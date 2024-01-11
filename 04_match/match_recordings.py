@@ -862,9 +862,9 @@ class MainWindow(QtWidgets.QMainWindow):
             writer.writeheader()
             for association in self.association_details.values():
                 val = asdict(association)
-                val['aris_file']   = self.aris_data_dirs[association.aris_idx]
-                val['gopro_file']  = self.gopro_files[association.gopro_idx]
-                val['gantry_file'] = self.gantry_files[association.gantry_idx]
+                val['aris_file']   = self.aris_data_dirs[association.aris_idx] if association.aris_idx >= 0 else ''
+                val['gopro_file']  = self.gopro_files[association.gopro_idx]   if association.gopro_idx >= 0 else ''
+                val['gantry_file'] = self.gantry_files[association.gantry_idx] if association.gantry_idx >= 0 else ''
                 writer.writerow(val)
 
 
