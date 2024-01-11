@@ -1,7 +1,323 @@
-aris_idx,gopro_idx,gantry_idx,aris_onset,gopro_offset,gantry_offset,notes
-20,18,17,58,0,3062000.0,"- Trajectory: flyby (z: 250, y: 1250)
+aris_file,aris_idx,aris_onset,gantry_file,gantry_idx,gantry_offset,gopro_file,gopro_idx,gopro_offset,notes
+data/aris/day2/2023-09-21_120653,23,158,data/gantry/day2/2023-09-21-12-06-59_20lbs_incendiary.csv,20,3968999.0,data/gopro/day2/clips_sd/GX010014_01.mp4,23,-8,"- Trajectory: L to R (z: 750)
+- Tilt: -22°
+- roll: 0°
+- Min Transmit
+- 15dB"
+data/aris/day2/2023-09-21_120912,24,116,data/gantry/day2/2023-09-21-12-09-16_20lbs_incendiary.csv,21,4047001.0,data/gopro/day2/clips_sd/GX010014_02.mp4,24,-8,"- Trajectory: L to R (z: 750)
+- Tilt: -22°
+- roll: 0°
+- Min Transmit
+- 15dB
+- repeat (main data)"
+data/aris/day2/2023-09-21_121124,25,31,data/gantry/day2/2023-09-21-12-11-22_20lbs_incendiary.csv,22,4047001.0,data/gopro/day2/clips_sd/GX010014_03.mp4,25,-6,"- Trajectory: L to R (z: 750)
+- Tilt: -22°
+- roll: 0°
+- Max Transmit
+- 5dB"
+data/aris/day2/2023-09-21_121327,26,68,data/gantry/day2/2023-09-21-12-13-27_20lbs_incendiary.csv,23,4063000.0,data/gopro/day2/clips_sd/GX010014_04.mp4,26,-6,"- Trajectory: L to R (z: 750)
+- Tilt: -22°
+- roll: 0°
+- Max Transmit
+- 0dB
+- repeat (0db gain)"
+data/aris/day2/2023-09-21_121539,27,68,data/gantry/day2/2023-09-21-12-15-38_20lbs_incendiary.csv,24,5031999.0,data/gopro/day2/clips_sd/GX010014_05.mp4,27,-6,"- Trajectory: L to R (z: 750)
+- Tilt: -22°
+- roll: 90°
+- Max Transmit
+- 0dB"
+data/aris/day2/2023-09-21_121739,28,70,data/gantry/day2/2023-09-21-12-17-40_20lbs_incendiary.csv,25,3734999.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,8,"- Trajectory: L to R (z: 750)
+- Tilt: -22°
+- roll: 90°
+- Min Transmit
+- 15dB
+- could not find matching gopro clip"
+data/aris/day2/2023-09-21_122608,31,66,data/gantry/day2/2023-09-21-12-26-08_20lbs_incendiary.csv,28,3829000.0,data/gopro/day2/clips_sd/GX020014_02.mp4,34,0,"- Trajectory: L to R (z: 500)
+- Tilt: -34°
+- roll: 0°
+- Max Transmit
+- 0dB"
+data/aris/day2/2023-09-21_122337,30,67,data/gantry/day2/2023-09-21-12-23-38_20lbs_incendiary.csv,27,3641000.0,data/gopro/day2/clips_sd/GX010014_08.mp4,30,0,"- Trajectory: L to R (z: 500)
+- Tilt: -34°
+- roll: 0°
+- Min Transmit
+- 15dB
+- repeat (main data)"
+data/aris/day2/2023-09-21_122855,32,85,data/gantry/day2/2023-09-21-12-28-57_20lbs_incendiary.csv,30,3626001.0,data/gopro/day2/clips_sd/GX020014_03.mp4,35,-4,"- Trajectory: L to R (z: 500)
+- Tilt: -34°
+- roll: 90°
+- Max Transmit
+- 0dB
+- original aris recording covers two trajectories, this is the 2nd one"
+data/aris/day2/2023-09-21_123500,34,77,data/gantry/day2/2023-09-21-12-35-01_20lbs_incendiary.csv,32,4280999.0,data/gopro/day2/clips_sd/GX020014_05.mp4,37,11,"- Trajectory: L to R (z: 250)
+- Tilt: -42°
+- roll: 0°
+- Min Transmit
+- 15dB"
+data/aris/day2/2023-09-21_123215,33,85,data/gantry/day2/2023-09-21-12-32-16_20lbs_incendiary.csv,31,4579000.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,-7,"- Trajectory: L to R (z: 500)
+- Tilt: -34°
+- roll: 90°
+- Min Transmit
+- 15dB
+- could not find gopro clip"
+data/aris/day2/2023-09-21_123651,35,63,data/gantry/day2/2023-09-21-12-36-51_20lbs_incendiary.csv,33,3625000.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,0,"- Trajectory: L to R (z: 250)
+- Tilt: -42°
+- roll: 0°
+- Min Transmit
+- 15dB
+- could not identify gopro clip"
+data/aris/day2/2023-09-21_123841,36,79,data/gantry/day2/2023-09-21-12-38-42_20lbs_incendiary.csv,34,4047001.0,data/gopro/day2/clips_sd/GX020014_04.mp4,36,-1,"- Trajectory: L to R (z: 250)
+- Tilt: -42°
+- roll: 0°
+- Max Transmit
+- 0dB
+- off-center"
+data/aris/day2/2023-09-21_124039,37,57,data/gantry/day2/2023-09-21-12-40-38_20lbs_incendiary.csv,35,4266000.0,data/gopro/day2/clips_sd/GX030014_01.mp4,46,2,"- Trajectory: L to R (z: 250)
+- Tilt: -42°
+- roll: 0°
+- Max Transmit
+- 0dB
+- repeat"
+data/aris/day2/2023-09-21_124241,38,67,data/gantry/day2/2023-09-21-12-42-41_20lbs_incendiary.csv,36,3829000.0,data/gopro/day2/clips_sd/GX020014_06.mp4,38,-4,"- Trajectory: L to R (z: 250)
+- Tilt: -42°
+- roll: 90°
+- Max Transmit
+- 0dB"
+data/aris/day2/2023-09-21_124440,39,67,data/gantry/day2/2023-09-21-12-44-40_20lbs_incendiary.csv,37,3860001.0,data/gopro/day2/clips_sd/GX020014_07.mp4,39,0,"- Trajectory: L to R (z: 250)
+- Tilt: -42°
+- roll: 90°
+- Min Transmit
+- 15dB"
+data/aris/day2/2023-09-21_124735,40,59,data/gantry/day2/2023-09-21-12-47-35_20lbs_incendiary.csv,38,3609999.0,data/gopro/day2/clips_sd/GX020014_08.mp4,40,0,"- Trajectory: flyby (z:250, y: 1250)
 - Tilt: -60°
 - Roll: 0°
 - Pan: -180°
 - Min Transmit
+- 15dB
+- gopro offset based on previous"
+data/aris/day2/2023-09-21_124915,41,62,data/gantry/day2/2023-09-21-12-49-15_20lbs_incendiary.csv,39,3530999.0,data/gopro/day2/clips_sd/GX020014_09.mp4,41,0,"- Trajectory: flyby (z:250, y: 1250)
+- Tilt: -60°
+- Roll: 0°
+- Pan: -180°
+- Max Transmit
+- 0dB"
+data/aris/day2/2023-09-21_125048,42,52,data/gantry/day2/2023-09-21-12-50-48_20lbs_incendiary.csv,40,2954000.0,data/gopro/day2/clips_sd/GX020014_10.mp4,42,0,"- Trajectory: flyby (z:250, y: 1250)
+- Tilt: -90°
+- Roll: 0°
+- Pan: -180°
+- Max Transmit
+- 0dB"
+data/aris/day2/2023-09-21_125236,43,80,data/gantry/day2/2023-09-21-12-52-37_20lbs_incendiary.csv,41,3842999.0,data/gopro/day2/clips_sd/GX020014_11.mp4,43,0,"- Trajectory: flyby (z:250, y: 1250)
+- Tilt: -90°
+- Roll: 0°
+- Pan: -180°
+- Min Transmit
+- 15dB
+- gopro offset based on previous"
+data/aris/day2/2023-09-21_125545,44,94,data/gantry/day2/2023-09-21-12-55-45_20lbs_incendiary.csv,42,5579000.0,data/gopro/day2/clips_sd/GX010014_07.mp4,29,-12,"- Trajectory: L to R (z: 250)
+- Tilt: -42°
+- roll: 0°
+- Min Transmit
+- 15dB
+- additional phone clips"
+data/aris/day2/2023-09-21_125924,45,64,data/gantry/day2/2023-09-21-12-59-24_20lbs_incendiary.csv,43,3954000.0,data/gopro/day2/clips_sd/GX030014_02.mp4,47,-8,"- Trajectory: L to R (z: 750)
+- Tilt: -22°
+- roll: 0°
+- Min Transmit
+- 15dB
+- additional phone clips"
+data/aris/day2/2023-09-21_141710,46,113,data/gantry/day2/2023-09-21-14-17-13_cylinder_test.csv,44,4500000.0,data/gopro/day2/clips_sd/GX010015_01.mp4,48,-4,"- Trajectory: L to R (z: 750)
+- Tilt: -22°
+- roll: 0°
+- Min Transmit
+- 12dB"
+data/aris/day2/2023-09-21_141945,47,65,data/gantry/day2/2023-09-21-14-19-45_cylinder_test.csv,45,3812999.0,data/gopro/day2/clips_sd/GX010015_02.mp4,49,-4,"- Trajectory: L to R (z: 750)
+- Tilt: -22°
+- roll: 0°
+- Min Transmit
+- 12dB
+- repeat (main data)"
+data/aris/day2/2023-09-21_142233,48,71,data/gantry/day2/2023-09-21-14-22-34_cylinder_test.csv,46,3375000.0,data/gopro/day2/clips_sd/GX010015_03.mp4,50,0,"- Trajectory: L to R (z: 750)
+- Tilt: -30°
+- roll: 0°
+- Min Transmit
+- 12dB
+- problem with tilt to -30deg"
+data/aris/day2/2023-09-21_142511,49,69,data/gantry/day2/2023-09-21-14-25-12_cylinder_test.csv,47,3937000.0,data/gopro/day2/clips_sd/GX010015_04.mp4,51,0,"- Trajectory: L to R (z: 750)
+- Tilt: -30
+- roll: 0°
+- Max Transmit
+- 0dB"
+data/aris/day2/2023-09-21_142753,50,75,data/gantry/day2/2023-09-21-14-27-53_cylinder_test.csv,48,4500000.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,0,"- Trajectory: L to R (z: 750)
+- Tilt: -30°
+- roll: 90°
+- Max Transmit
+- 0dB
+- no gopro clip"
+data/aris/day2/2023-09-21_142952,51,65,data/gantry/day2/2023-09-21-14-29-53_cylinder_test.csv,49,3515999.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,0,"- Trajectory: L to R (z: 750)
+- Tilt: -30°
+- roll: 90°
+- Min Transmit
+- 12dB
+- no gopro clip"
+data/aris/day2/2023-09-21_143308,52,63,data/gantry/day2/2023-09-21-14-33-08_cylinder_test.csv,50,3829000.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,0,"- Trajectory: L to R (z: 500)
+- Tilt: -34°
+- roll: 0°
+- Min Transmit
+- 12dB
+- no gopro clip"
+data/aris/day2/2023-09-21_143718,53,90,data/gantry/day2/2023-09-21-14-37-20_cylinder_test.csv,51,3719001.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,0,"- Trajectory: L to R (z: 500)
+- Tilt: -40°
+- roll: 0°
+- Min Transmit
+- 12dB
+- no gopro clip, tilt angle was changed"
+data/aris/day2/2023-09-21_143925,54,69,data/gantry/day2/2023-09-21-14-39-25_cylinder_test.csv,52,4156999.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,0,"- Trajectory: L to R (z: 500)
+- Tilt: -40°
+- roll: 0°
+- Min Transmit
+- 12dB
+- no gopro clip, repeat (main data)"
+data/aris/day2/2023-09-21_144132,55,66,data/gantry/day2/2023-09-21-14-41-32_cylinder_test.csv,53,3922000.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,0,"- Trajectory: L to R (z: 500)
+- Tilt: -40
+- roll: 0°
+- Max Transmit
+- 0dB
+- no gopro clip"
+data/aris/day2/2023-09-21_144410,56,67,data/gantry/day2/2023-09-21-14-44-10_cylinder_test.csv,54,4266000.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,0,"- Trajectory: L to R (z: 500)
+- Tilt: -40°
+- roll: 90°
+- Max Transmit
+- 0dB
+- no gopro clip"
+data/aris/day2/2023-09-21_144723,57,81,data/gantry/day2/2023-09-21-14-47-23_cylinder_test.csv,55,4703001.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,0,"- Trajectory: L to R (z: 500)
+- Tilt: -40°
+- roll: 90°
+- Min Transmit
+- 12dB
+- no gopro clip"
+data/aris/day2/2023-09-21_145245,58,63,data/gantry/day2/2023-09-21-14-52-45_cylinder_test.csv,56,3718999.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,0,"- Trajectory: L to R (z: 250)
+- Tilt: -45°
+- roll: 0°
+- Min Transmit
+- 12dB
+- no gopro clip"
+data/aris/day2/2023-09-21_145725,59,70,data/gantry/day2/2023-09-21-14-57-25_cylinder_test.csv,57,4157000.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,0,"- Trajectory: L to R (z: 250)
+- Tilt: -50
+- roll: 0°
+- Min Transmit
+- 12dB
+- no gopro clip, tilt angle was changed"
+data/aris/day2/2023-09-21_145930,60,92,data/gantry/day2/2023-09-21-14-59-31_cylinder_test.csv,58,5500000.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,0,"- Trajectory: L to R (z: 250)
+- Tilt: -50
+- roll: 0°
+- Min Transmit
+- 12dB
+- no gopro clip, repeat (main data)"
+data/aris/day2/2023-09-21_150138,61,70,data/gantry/day2/2023-09-21-15-01-38_cylinder_test.csv,59,4079000.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,0,"- Trajectory: L to R (z: 250)
+- Tilt: -50°
+- roll: 0°
+- Max Transmit
+- 0dB
+- no gopro clip"
+data/aris/day2/2023-09-21_150336,62,61,data/gantry/day2/2023-09-21-15-03-36_cylinder_test.csv,60,3609999.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,0,"- Trajectory: L to R (z: 250)
+- Tilt: -50°
+- roll: 90°
+- Max Transmit
+- 0dB
+- no gopro clip"
+data/aris/day2/2023-09-21_150536,63,75,data/gantry/day2/2023-09-21-15-05-37_cylinder_test.csv,61,3516000.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,0,"- Trajectory: L to R (z: 250)
+- Tilt: -50°
+- roll: 90°
+- Min Transmit
+- 12dB
+- no gopro clip"
+data/aris/day2/2023-09-21_150841,64,65,data/gantry/day2/2023-09-21-15-08-41_cylinder_test.csv,62,3828000.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,0,"- Trajectory: flyby (z:250, y: 1200)
+- Tilt: -60°
+- Roll: 0°
+- Pan: -180°
+- Min Transmit
+- 12dB
+- no gopro clip"
+data/aris/day2/2023-09-21_151019,65,67,data/gantry/day2/2023-09-21-15-10-19_cylinder_test.csv,63,4077999.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,0,"- Trajectory: flyby (z:250, y: 1200)
+- Tilt: -60°
+- Roll: 0°
+- Pan: -180°
+- Max Transmit
+- 0dB
+- no gopro clip"
+data/aris/day2/2023-09-21_151156,66,65,data/gantry/day2/2023-09-21-15-11-56_cylinder_test.csv,64,3843999.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,0,"- Trajectory: flyby (z:250, y: 1200)
+- Tilt: -90°
+- Roll: 0°
+- Pan: -180°
+- Max Transmit
+- 0dB
+- no gopro clip"
+data/aris/day2/2023-09-21_151337,67,70,data/gantry/day2/2023-09-21-15-13-37_cylinder_test.csv,65,4046999.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,0,"- Trajectory: flyby (z:250, y: 1200)
+- Tilt: -90°
+- Roll: 0°
+- Pan: -180°
+- Min Transmit
+- 12dB
+- no gopro clip, offsets not matched, forgot to stop rosbag recording"
+data/aris/day2/2023-09-21_155609,68,70,data/gantry/day2/2023-09-21-15-56-09_100lbs.csv,66,4922999.0,data/gopro/day2/clips_sd/GX010018_01.mp4,52,-6,"- Trajectory: ellipse (z: 1250)
+- Tilt: -32° (start)
+- roll: 0°
+- Min Transmit
 - 15dB"
+data/aris/day2/2023-09-21_160146,69,69,data/gantry/day2/2023-09-21-16-01-46_100lbs.csv,67,4047000.0,data/gopro/day2/clips_sd/GX010018_02.mp4,53,-12,"- Trajectory: ellipse (z: 1000)
+- Tilt: -38° (start)
+- roll: 0°
+- Min Transmit
+- 15dB"
+data/aris/day2/2023-09-21_160551,70,66,data/gantry/day2/2023-09-21-16-05-51_100lbs.csv,68,3937000.0,data/gopro/day2/clips_sd/GX010018_03.mp4,54,0,"- Trajectory: ellipse (z: 1000)
+- Tilt: -32° (start)
+- roll: 0°
+- Max Transmit
+- 0dB
+- not sure about gopro offset"
+data/aris/day2/2023-09-21_161033,71,76,data/gantry/day2/2023-09-21-16-10-34_100lbs.csv,70,3719000.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,0,"- Trajectory: ellipse (z: 750)
+- Tilt: -48° (start)
+- roll: 0°
+- Max Transmit
+- 0dB
+- gopro clip missing"
+data/aris/day2/2023-09-21_161444,72,65,data/gantry/day2/2023-09-21-16-14-44_100lbs.csv,71,4046999.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,0,"- Trajectory: ellipse (z: 750)
+- Tilt: -32° (start)
+- roll: 0°
+- Min Transmit
+- 15dB
+- no gopro clip"
+data/aris/day2/2023-09-21_161916,73,52,data/gantry/day2/2023-09-21-16-19-16_100lbs.csv,72,2750000.0,data/gopro/day2/clips_sd/GX010018_04.mp4,55,0,"- Trajectory: flyby (z: ?, y: 1000)
+- Tilt: -60°
+- Roll: 0°
+- Pan: -180°
+- Min Transmit
+- 12dB"
+data/aris/day2/2023-09-21_162055,74,66,data/gantry/day2/2023-09-21-16-20-56_100lbs.csv,73,3844000.0,data/gopro/day2/clips_sd/GX010018_06.mp4,57,0,"- Trajectory: flyby (z: ?, y: 1000)
+- Tilt: -60°
+- Roll: 0°
+- Pan: -180°
+- Max Transmit
+- 0dB"
+data/aris/day2/2023-09-21_162251,75,75,data/gantry/day2/2023-09-21-16-22-52_100lbs.csv,74,4094000.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,0,"- Trajectory: flyby (z: ?, y: 1000)
+- Tilt: -90°
+- Roll: 0°
+- Pan: -180°
+- Max Transmit
+- 0dB
+- no gopro clip"
+data/aris/day2/2023-09-21_162428,76,90,data/gantry/day2/2023-09-21-16-24-29_100lbs.csv,75,4406999.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,0,"- Trajectory: flyby (z: ?, y: 1000)
+- Tilt: -90°
+- Roll: 0°
+- Pan: -180°
+- Min Transmit
+- 15dB
+- no gopro clip"
+data/aris/day2/2023-09-21_122115,29,98,data/gantry/day2/2023-09-21-12-21-16_20lbs_incendiary.csv,26,5812999.0,data/gopro/day2/clips_sd/GX010018_07.mp4,-1,56,"- Trajectory: flyby (z: ?, y: 1000)
+- Tilt: -90°
+- Roll: 0°
+- Pan: -180°
+- Min Transmit
+- 15dB
+- couldn't identify gopro clip"

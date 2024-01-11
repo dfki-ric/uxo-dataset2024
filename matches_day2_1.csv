@@ -1,3 +1,20 @@
+# Granade 15cm Diameter:
+
+Achse ARIS oben auf dem Objekt 
+    position: 
+      x: 1.263516
+      y: 1.252357
+      z: -1.0917249999999998
+
+Sonar Vorne rechteseite. Spize:
+      x: 1.6512390000000001
+      y: 1.2631050000000001
+      z: -1.1809090000000002
+
+**Object point:** (1.263516, 1.252357, -1.180909)
+Note: Objekt nicht in TF
+
+
 aris_idx,gopro_idx,gantry_idx,aris_onset,gopro_offset,gantry_offset,notes
 3,0,0,83,-8,8859000.0,"- Trajectory: L to R (z: 750)
 - Tilt: -22°
@@ -32,3 +49,61 @@ aris_idx,gopro_idx,gantry_idx,aris_onset,gopro_offset,gantry_offset,notes
 - Max Transmit
 - 5dB
 - repeat of previous"
+9,6,6,181,6,10703000.0,"- Trajectory: L to R (z: 500)
+- Tilt: -34°
+- roll: 0°
+- Min Transmit
+- 15dB"
+10,7,7,124,0,4171999.0,"- Trajectory: L to R (z: 500)
+- Tilt: -34°
+- roll: 0°
+- Min Transmit
+- 15dB
+- repeat (main data)"
+11,8,8,102,-2,3609999.0,"- Trajectory: L to R (z: 500)
+- Tilt: -34°
+- roll: 0°
+- Max Transmit
+- 5dB"
+12,9,9,82,-2,3953001.0,"- Trajectory: L to R (z: 500)
+- Tilt: -34°
+- roll: 90°
+- Max Transmit
+- 5dB"
+13,10,10,63,-2,3500000.0,"- Trajectory: L to R (z: 500)
+- Tilt: -34°
+- roll: 90°
+- Min Transmit
+- 12dB"
+14,11,11,90,0,4078000.0,"- Trajectory: L to R (z: 250)
+- Tilt: -42°
+- roll: 0°
+- Min Transmit
+- 15dB"
+15,12,12,74,0,3717999.0,"- Trajectory: L to R (z: 250)
+- Tilt: -42°
+- roll: 0°
+- Min Transmit
+- 15dB
+- repeat (main data)"
+16,13,13,72,0,3954000.0,"- Trajectory: L to R (z: 250)
+- Tilt: -42°
+- roll: 0°
+- Max Transmit
+- 5dB"
+17,14,14,80,0,4375000.0,"- Trajectory: L to R (z: 250)
+- Tilt: -42°
+- roll: 90°
+- Max Transmit
+- 5dB"
+18,16,15,72,0,3860001.0,"- Trajectory: L to R (z: 250)
+- Tilt: -42°
+- roll: 90°
+- Min Transmit
+- 15dB"
+19,17,16,150,0,4375000.0,"- Trajectory: flyby (z: 250, y: 1250)
+- Tilt: -60°
+- Roll: 0°
+- Pan: -180°
+- Max Transmit
+- 5dB"

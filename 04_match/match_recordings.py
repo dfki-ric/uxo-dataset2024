@@ -852,11 +852,20 @@ class MainWindow(QtWidgets.QMainWindow):
             if not out_file_path.lower().endswith('.csv'):
                 out_file_path += '.csv'
             self.out_file_path = out_file_path
+            
+        header = list(Association.__dataclass_fields__.keys())
+        header.extend(['aris_file', 'gopro_file', 'gantry_file'])
+        header = sorted(header)
         
         with open(self.out_file_path, 'w') as out_file:
-            writer = csv.DictWriter(out_file, Association.__dataclass_fields__.keys())
+            writer = csv.DictWriter(out_file, header)
             writer.writeheader()
-            writer.writerows(asdict(a) for a in self.association_details.values())
+            for association in self.association_details.values():
+                val = asdict(association)
+                val['aris_file']   = self.aris_data_dirs[association.aris_idx]
+                val['gopro_file']  = self.gopro_files[association.gopro_idx]
+                val['gantry_file'] = self.gantry_files[association.gantry_idx]
+                writer.writerow(val)
 
 
     def ensure_update(self):
