@@ -1,4 +1,115 @@
 aris_file,aris_idx,aris_onset,gantry_file,gantry_idx,gantry_offset,gopro_file,gopro_idx,gopro_offset,notes
+data/aris/day2/2023-09-21_100927,3,83,data/gantry/day2/2023-09-21-10-09-23_15cm_mortar.csv,0,8859000.0,data/gopro/day2/clips_sd/GX010012_01.mp4,0,-8,"- Trajectory: L to R (z: 750)
+- Tilt: -22°
+- roll: 0°
+- Min Transmit
+- 15dB"
+data/aris/day2/2023-09-21_101131,4,87,data/gantry/day2/2023-09-21-10-11-33_15cm_mortar.csv,1,3640001.0,data/gopro/day2/clips_sd/GX010012_02.mp4,1,-8,"- Trajectory: L to R (z: 750)
+- Tilt: -22°
+- roll: 0°
+- Min Transmit
+- 15dB
+- repeat (main data)"
+data/aris/day2/2023-09-21_101416,5,102,data/gantry/day2/2023-09-21-10-14-18_15cm_mortar.csv,2,5016000.0,data/gopro/day2/clips_sd/GX010012_03.mp4,2,-6,"- Trajectory: L to R (z: 750)
+- Tilt: -22°
+- roll: 0°
+- Max Transmit
+- 5dB"
+data/aris/day2/2023-09-21_101622,6,74,data/gantry/day2/2023-09-21-10-16-23_15cm_mortar.csv,3,3735000.0,data/gopro/day2/clips_sd/GX010012_04.mp4,3,-4,"- Trajectory: L to R (z: 750)
+- Tilt: -22°
+- roll: 90°
+- Max Transmit
+- 5dB
+- bad, needs repeat"
+data/aris/day2/2023-09-21_101840,7,122,data/gantry/day2/2023-09-21-10-18-42_15cm_mortar.csv,4,5360001.0,data/gopro/day2/clips_sd/GX010012_05.mp4,4,-4,"- Trajectory: L to R (z: 750)
+- Tilt: -22°
+- roll: 90°
+- Min Transmit
+- 15dB"
+data/aris/day2/2023-09-21_102106,8,101,data/gantry/day2/2023-09-21-10-21-09_15cm_mortar.csv,5,3938000.0,data/gopro/day2/clips_sd/GX010012_06.mp4,5,-8,"- Trajectory: L to R (z: 750)
+- Tilt: -22°
+- roll: 90°
+- Max Transmit
+- 5dB
+- repeat of previous"
+data/aris/day2/2023-09-21_102500,9,181,data/gantry/day2/2023-09-21-10-25-01_15cm_mortar.csv,6,10703000.0,data/gopro/day2/clips_sd/GX010012_07.mp4,6,6,"- Trajectory: L to R (z: 500)
+- Tilt: -34°
+- roll: 0°
+- Min Transmit
+- 15dB"
+data/aris/day2/2023-09-21_102700,10,124,data/gantry/day2/2023-09-21-10-27-05_15cm_mortar.csv,7,4171999.0,data/gopro/day2/clips_sd/GX010012_08.mp4,7,0,"- Trajectory: L to R (z: 500)
+- Tilt: -34°
+- roll: 0°
+- Min Transmit
+- 15dB
+- repeat (main data)"
+data/aris/day2/2023-09-21_102909,11,102,data/gantry/day2/2023-09-21-10-29-12_15cm_mortar.csv,8,3609999.0,data/gopro/day2/clips_sd/GX020012_01.mp4,8,-2,"- Trajectory: L to R (z: 500)
+- Tilt: -34°
+- roll: 0°
+- Max Transmit
+- 5dB"
+data/aris/day2/2023-09-21_103140,12,82,data/gantry/day2/2023-09-21-10-31-41_15cm_mortar.csv,9,3953001.0,data/gopro/day2/clips_sd/GX020012_02.mp4,9,-2,"- Trajectory: L to R (z: 500)
+- Tilt: -34°
+- roll: 90°
+- Max Transmit
+- 5dB"
+data/aris/day2/2023-09-21_103407,13,63,data/gantry/day2/2023-09-21-10-34-07_15cm_mortar.csv,10,3500000.0,data/gopro/day2/clips_sd/GX020012_03.mp4,10,-2,"- Trajectory: L to R (z: 500)
+- Tilt: -34°
+- roll: 90°
+- Min Transmit
+- 12dB"
+data/aris/day2/2023-09-21_103728,14,90,data/gantry/day2/2023-09-21-10-37-30_15cm_mortar.csv,11,4078000.0,data/gopro/day2/clips_sd/GX020012_04.mp4,11,0,"- Trajectory: L to R (z: 250)
+- Tilt: -42°
+- roll: 0°
+- Min Transmit
+- 15dB"
+data/aris/day2/2023-09-21_103927,15,74,data/gantry/day2/2023-09-21-10-39-28_15cm_mortar.csv,12,3717999.0,data/gopro/day2/clips_sd/GX020012_05.mp4,12,0,"- Trajectory: L to R (z: 250)
+- Tilt: -42°
+- roll: 0°
+- Min Transmit
+- 15dB
+- repeat (main data)"
+data/aris/day2/2023-09-21_104749,16,72,data/gantry/day2/2023-09-21-10-47-49_15cm_mortar.csv,13,3954000.0,data/gopro/day2/clips_sd/GX020012_06.mp4,13,0,"- Trajectory: L to R (z: 250)
+- Tilt: -42°
+- roll: 0°
+- Max Transmit
+- 5dB"
+data/aris/day2/2023-09-21_105017,17,80,data/gantry/day2/2023-09-21-10-50-18_15cm_mortar.csv,14,4375000.0,data/gopro/day2/clips_sd/GX020012_07.mp4,14,0,"- Trajectory: L to R (z: 250)
+- Tilt: -42°
+- roll: 90°
+- Max Transmit
+- 5dB"
+data/aris/day2/2023-09-21_105230,18,72,data/gantry/day2/2023-09-21-10-52-31_15cm_mortar.csv,15,3860001.0,data/gopro/day2/clips_sd/GX020012_09.mp4,16,0,"- Trajectory: L to R (z: 250)
+- Tilt: -42°
+- roll: 90°
+- Min Transmit
+- 15dB"
+data/aris/day2/2023-09-21_105856,19,150,data/gantry/day2/2023-09-21-10-59-02_15cm_mortar.csv,16,4375000.0,data/gopro/day2/clips_sd/GX020012_10.mp4,17,0,"- Trajectory: flyby (z: 250, y: 1250)
+- Tilt: -60°
+- Roll: 0°
+- Pan: -180°
+- Max Transmit
+- 5dB"
+data/aris/day2/2023-09-21_110049,20,58,data/gantry/day2/2023-09-21-11-00-50_15cm_mortar.csv,17,3062000.0,data/gopro/day2/clips_sd/GX030012_01.mp4,18,0,"- Trajectory: flyby (z: 250, y: 1250)
+- Tilt: -60°
+- Roll: 0°
+- Pan: -180°
+- Min Transmit
+- 15dB"
+data/aris/day2/2023-09-21_110229,21,125,data/gantry/day2/2023-09-21-11-02-34_15cm_mortar.csv,18,3079000.0,data/gopro/day2/clips_sd/GX030012_02.mp4,19,0,"- Trajectory: flyby (z: 250, y: 1250)
+- Tilt: -90°
+- Roll: 0°
+- Pan: -180°
+- Min Transmit
+- 15dB
+- impossible to match"
+data/aris/day2/2023-09-21_110411,22,67,data/gantry/day2/2023-09-21-11-04-12_15cm_mortar.csv,19,3406001.0,data/gopro/day2/clips_sd/GX030012_03.mp4,20,0,"- Trajectory: flyby (z: 250, y: 1250)
+- Tilt: -90°
+- Roll: 0°
+- Pan: -180°
+- Max Transmit
+- 5dB
+- impossible to match"
 data/aris/day2/2023-09-21_120653,23,158,data/gantry/day2/2023-09-21-12-06-59_20lbs_incendiary.csv,20,3968999.0,data/gopro/day2/clips_sd/GX010014_01.mp4,23,-8,"- Trajectory: L to R (z: 750)
 - Tilt: -22°
 - roll: 0°
