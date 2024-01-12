@@ -10,14 +10,14 @@ import cv2
 # TODO contact Christian Backe regarding dataset management and organization
 
 
-def write_aris(hdf: h5.File, match: dict) -> None:
+def write_aris(hdf: h5.File, match: dict, root: str = '/') -> None:
     aris_dataset_path = match['aris_file']
     aris_basename = os.path.dirname(aris_dataset_path + '/')
     
     def get_metafile(appendix: str) -> str:
         return aris_dataset_path + '/' + aris_basename + '_' + appendix
     
-    aris_group = hdf.create_group('/aris/' + aris_basename)
+    aris_group = hdf.create_group(root + 'aris/' + aris_basename)
     meta_group = aris_group.create_group('frame_metadata')
     
     # General recording metadata
@@ -75,10 +75,10 @@ def write_aris(hdf: h5.File, match: dict) -> None:
         idx += 1
     
 
-def write_gantry(hdf: h5.File, match: dict) -> None:
+def write_gantry(hdf: h5.File, match: dict, root: str = '/') -> None:
     gantry_file = match['gantry_file']
     filename = os.path.splitext(os.path.basename(gantry_file))[0]
-    gantry_group = hdf.create_group('/gantry/' + filename)
+    gantry_group = hdf.create_group(root + 'gantry/' + filename)
     
     # Copy all metadata
     gantry_meta_file = os.path.dirname(gantry_file) + '/gantry_metadata.csv'
@@ -94,10 +94,10 @@ def write_gantry(hdf: h5.File, match: dict) -> None:
         gantry_group.create_dataset(seq, data=gantry_data[seq])
 
 
-def write_gopro(hdf: h5.File, match: dict) -> None:
+def write_gopro(hdf: h5.File, match: dict, root: str = '/') -> None:
     gopro_file = match['gopro_file']
     filename = os.path.splitext(os.path.basename(gopro_file))[0]
-    gopro_group = hdf.create_group('/gopro/' + filename)
+    gopro_group = hdf.create_group(root + 'gopro/' + filename)
     
     # Copy all metadata
     gopro_meta_file = os.path.dirname(gopro_file) + '/gopro_metadata.csv'
@@ -150,32 +150,32 @@ def write_notes(hdf: h5.File, match: dict) -> None:
     hdf.attrs['notes'] = '\n'.join(additional)
 
 
-def main(match_file: str) -> None:
+def write_distributed_dataset(match_file: str) -> None:
     matches = pd.read_csv(match_file)
-    hdfs = {}
+    datasets = {}
     
     for idx,match in matches.iterrows():
         basename = os.path.dirname(match['aris_file'] + '/')
-        dataset = 'datasets/' + basename + '.hdf'
-        hdfs[basename] = dataset
+        hdf = 'datasets/' + basename + '.hdf'
+        datasets[basename] = hdf
         
-        with h5.File(dataset, 'w') as hdf:
+        with h5.File(hdf, 'w') as dataset:
             # Write metadata for this dataset
-            hdf.attrs['date'] = basename
-            hdf.attrs['aris_onset_frame_idx'] = match['aris_onset']
-            hdf.attrs['gantry_offset_us'] = match['gantry_offset']
-            hdf.attrs['gopro_frame_offset'] = match['gopro_offset']
+            dataset.attrs['date'] = basename
+            dataset.attrs['aris_onset_frame_idx'] = match['aris_onset']
+            dataset.attrs['gantry_offset_us'] = match['gantry_offset']
+            dataset.attrs['gopro_frame_offset'] = match['gopro_offset']
             
-            write_notes(hdf, match)
+            write_notes(dataset, match)
             
-            write_aris(hdf, match)
-            write_gantry(hdf, match)
-            write_gopro(hdf, match)
+            write_aris(dataset, match)
+            write_gantry(dataset, match)
+            write_gopro(dataset, match)
         
-    meta = 'metaset.hdf'
-    with h5.File(meta, 'w') as meta_hdf:
-        for key,dataset in hdfs.items():
-            meta_hdf[key] = h5.ExternalLink(dataset, '/')
+    meta_hdf = 'metaset.hdf'
+    with h5.File(meta_hdf, 'w') as meta:
+        for key,dataset in datasets.items():
+            meta[key] = h5.ExternalLink(dataset, '/')
     
     # TODO 
     # - region references
