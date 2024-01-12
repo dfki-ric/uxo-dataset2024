@@ -1,4 +1,5 @@
 import os
+import re
 import yaml
 import numpy as np
 import pandas as pd
@@ -9,7 +10,8 @@ import cv2
 # TODO contact Christian Backe regarding dataset management and organization
 
 
-def write_aris(hdf: h5.File, aris_dataset_path: str) -> None:
+def write_aris(hdf: h5.File, match: dict) -> None:
+    aris_dataset_path = match['aris_file']
     aris_basename = os.path.dirname(aris_dataset_path + '/')
     
     def get_metafile(appendix: str) -> str:
@@ -43,15 +45,19 @@ def write_aris(hdf: h5.File, aris_dataset_path: str) -> None:
     aris_group['tilt'] = meta_group['SonarTilt']
     aris_group['roll'] = meta_group['SonarRoll']
     
+    # Add marks if present
+    # with open(get_metafile('marks.yaml')) as marks_file:
+    #     marks = yaml.safe_load(marks_file)
+        
     # Add raw frames
-    frame_raw = aris_group.create_dataset('frames_raw', (num_frames, beam_count, bin_count, 1), dtype=np.uint8)
+    frames_raw = aris_group.create_dataset('frames_raw', (num_frames, beam_count, bin_count, 1), dtype=np.uint8)
     idx = 0
     for frame_file in os.listdir(aris_dataset_path):
         if not frame_file.endswith('.pgm'):
             continue
         
         frame = cv2.imread(frame_file, cv2.IMREAD_UNCHANGED)
-        frame_raw[idx] = frame
+        frames_raw[idx] = frame
         idx += 1
         
     # Add polar frames
@@ -67,15 +73,10 @@ def write_aris(hdf: h5.File, aris_dataset_path: str) -> None:
         
         frames_polar[idx] = frame
         idx += 1
-        
-    # Add marks if present
-    with open(get_metafile('marks.yaml')) as marks_file:
-        marks = yaml.safe_load(marks_file)
-        if marks.get('onset', -1) > 0:
-            aris_group.attrs['motion_onset'] = marks['onset']
+    
 
-
-def write_gantry(hdf: h5.File, gantry_file: str) -> None:
+def write_gantry(hdf: h5.File, match: dict) -> None:
+    gantry_file = match['gantry_file']
     filename = os.path.splitext(os.path.basename(gantry_file))[0]
     gantry_group = hdf.create_group('/gantry/' + filename)
     
@@ -93,7 +94,8 @@ def write_gantry(hdf: h5.File, gantry_file: str) -> None:
         gantry_group.create_dataset(seq, data=gantry_data[seq])
 
 
-def write_gopro(hdf: h5.File, gopro_file: str) -> None:
+def write_gopro(hdf: h5.File, match: dict) -> None:
+    gopro_file = match['gopro_file']
     filename = os.path.splitext(os.path.basename(gopro_file))[0]
     gopro_group = hdf.create_group('/gopro/' + filename)
     
@@ -119,20 +121,66 @@ def write_gopro(hdf: h5.File, gopro_file: str) -> None:
             frames[frame_idx] = cv2.cvtColor(gopro_frame, cv2.COLOR_BGR2RGB)
 
 
+def write_notes(hdf: h5.File, match: dict) -> None:
+    notes: str = match['notes']
+    lines = notes.split('\n')
+    additional = []
+    
+    for line in lines:
+        if not line.startswith('- '):
+            additional.append(line)
+            continue
+        
+        line = line[2:]
+        line_low = line.lower()
+        
+        if line_low.startswith(('target:', 'trajectory:', 'pan:', 'tilt:', 'roll:')):
+            key, value = line.split(': ', 1)
+            hdf.attrs[key.lower()] = value
+            
+        elif 'transmit' in line.lower():
+            hdf.attrs['transmit'] = line_low.replace('transmit', '').strip()
+            
+        elif re.match(r'[0-9]+db', line_low):
+            hdf.attrs['gain'] = line
+            
+        else:
+            additional.append(line)
+            
+    hdf.attrs['notes'] = '\n'.join(additional)
+
+
 def main(match_file: str) -> None:
     matches = pd.read_csv(match_file)
+    hdfs = {}
     
     for idx,match in matches.iterrows():
-        with h5.File(filename, 'w') as hdf:
-            # TODO write metadata for this dataset
-            hdf.attrs['date'] = ''
+        basename = os.path.dirname(match['aris_file'] + '/')
+        dataset = 'datasets/' + basename + '.hdf'
+        hdfs[basename] = dataset
         
+        with h5.File(dataset, 'w') as hdf:
+            # Write metadata for this dataset
+            hdf.attrs['date'] = basename
+            hdf.attrs['aris_onset_frame_idx'] = match['aris_onset']
+            hdf.attrs['gantry_offset_us'] = match['gantry_offset']
+            hdf.attrs['gopro_frame_offset'] = match['gopro_offset']
+            
+            write_notes(hdf, match)
+            
+            write_aris(hdf, match)
+            write_gantry(hdf, match)
+            write_gopro(hdf, match)
+        
+    meta = 'metaset.hdf'
+    with h5.File(meta, 'w') as meta_hdf:
+        for key,dataset in hdfs.items():
+            meta_hdf[key] = h5.ExternalLink(dataset, '/')
     
     # TODO 
-    # - select tuples to throw into hdfs
-    # - one hdf per tuple
-    # - tag hdfs with content description (trajectory type, origin, target type, ...)
+    # - region references
+    # - target origins
+    # - dimension scales
     # - add matching data as required (timezone offsets?)
     # - add meta hdf linking to other hdfs
     
-        
