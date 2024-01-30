@@ -878,12 +878,13 @@ if __name__ == '__main__':
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--day', choices=['1', '2'], help="Load datasets from 'data/[aris|gopro|gantry]/day<X>/")
     group.add_argument('--dirs', nargs=3, metavar=('ARIS_DIR', 'GOPRO_DIR', 'GANTRY_DIR'), help="Load datasets from the provided directories")
+    group.add_argument('--data-root', default='')
     args = parser.parse_args()
     
     if args.day in ['1', '2']:
-        aris_dir_path = f'data/aris/day{args.day}/'
-        gopro_dir_path = f'data/gopro/day{args.day}/clips_sd/'
-        gantry_dir_path = f'data/gantry/day{args.day}/'
+        aris_dir_path = os.path.join(args.data_root, f'data/aris/day{args.day}/')
+        gopro_dir_path = os.path.join(args.data_root, f'data/gopro/day{args.day}/clips_sd/')
+        gantry_dir_path = os.path.join(args.data_root, f'data/gantry/day{args.day}/')
     else:
         aris_dir_path, gopro_dir_path, gantry_dir_path = args.dirs
     
