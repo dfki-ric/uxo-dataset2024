@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Downsampling takes a very, very long time for the 5.3k videos, so this is perfect for the cut clips
+# Downsampling takes a very, very long time for the 5.3k videos, so it's better to do this for the already cut clips
 
 if [ "$#" -ne 2 ]; then
     echo "Usage: $0 <input-folder> <output-folder>"

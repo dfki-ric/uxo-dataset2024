@@ -1,11 +1,14 @@
 #!/usr/bin/env python
+
+# XXX in the end this script was never used
+
 import sys
 import os
 import ffmpeg
 import csv
 import argparse
 
-from timestamps import day1, day2
+from gopro_timestamps import day1, day2
 
 
 def basename(s):

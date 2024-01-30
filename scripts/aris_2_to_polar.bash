@@ -6,5 +6,5 @@ fi
 
 for aris_dir in $1/*/; do
     echo "$aris_dir ..."
-    python3 ./aris_to_polar.py $aris_dir $aris_dir/polar
+    python3 ./src/aris_to_polar.py $aris_dir $aris_dir/polar
 done

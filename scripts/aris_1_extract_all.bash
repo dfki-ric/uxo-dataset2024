@@ -6,5 +6,5 @@ fi
 
 for aris in $1/*.aris; do
     echo "extracting $aris ..."
-    python3 ./extract_aris_full.py $aris $2
+    python3 ./src/aris_extract_full.py $aris $2
 done

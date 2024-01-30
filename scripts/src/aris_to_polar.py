@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import cv2
 
-from aris import get_beamcount_from_pingmode, BeamWidthsAris3000_64, BeamWidthsAris3000_128
+from aris_definitions import get_beamcount_from_pingmode, BeamWidthsAris3000_64, BeamWidthsAris3000_128
 
 
 def usage():
@@ -43,8 +43,8 @@ def aris_frame_to_polar(frame, frame_idx, metadata):
 
 if __name__ == '__main__':
     if len(sys.argv) != 3:
-       usage()
-       raise RuntimeError('Wrong number of arguments')
+        usage()
+        raise RuntimeError('Wrong number of arguments')
     
     in_dir_path = sys.argv[1]
     out_dir_path = sys.argv[2]

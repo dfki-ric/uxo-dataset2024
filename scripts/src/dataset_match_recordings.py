@@ -13,15 +13,91 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PyQt5 import QtCore, QtGui, QtWidgets
 from qrangeslider import QRangeSlider
+from matching_context import MatchingContext, get_aris_metadata, get_gantry_metadata, get_gopro_metadata, folder_basename
 
 
-def basename(s):
-    if s.endswith('/'):
-        s = s[:-1]
-    return os.path.split(s)[-1]
+class QtMatchingContext(MatchingContext):
+    def __init__(self, aris_dir, gantry_file, gopro_file):
+        super().__init__(aris_dir, gantry_file, gopro_file)
+        
+        self.aris_optical_flow = get_optical_flow(aris_dir)
+        self.gopro_optical_flow = get_optical_flow(gopro_file)
+        self.gopro_original_creation_time = parse_gopro_datetime(self.gopro_meta['creation_time'])
+        self.gopro_original_creation_time_simple = self.gopro_original_creation_time.strftime('%Y-%m-%d_%H%M%S')
+        
+        self.aris_img = None
+        self.gopro_img = None
+        self.reload = True
+        
+        
+    @property
+    def aris_frame_idx(self):
+        return self._aris_frame_idx
+    
+    @aris_frame_idx.setter
+    def aris_frame_idx(self, new_val):
+        if self.aris_start_frame < new_val < self.aris_end_frame:
+            self._aris_frame_idx = new_val
+        else:
+            self._aris_frame_idx = self.aris_start_frame
+        self.aris_img = None
+    
+    @property
+    def aris_start_frame(self):
+        return self._aris_start_frame
+    
+    @aris_start_frame.setter
+    def aris_start_frame(self, new_val):
+        self._aris_start_frame = min(new_val, self.aris_end_frame - 1)
+        self.aris_frame_idx = max(self.aris_start_frame, self.aris_frame_idx)
+    
+    @property
+    def aris_end_frame(self):
+        return self._aris_end_frame
+    
+    @aris_end_frame.setter
+    def aris_end_frame(self, new_val):
+        self._aris_end_frame = max(new_val, self.aris_start_frame + 1)
+        self.aris_frame_idx = min(self.aris_frame_idx, self.aris_end_frame)
+    
+    def tick(self):
+        self.aris_img = None
+        self.aris_frame_idx += self.aris_tick_step
+        
+    
+    def get_aris_frame(self, colorize=True):
+        frametime = self.get_aris_frametime(self.aris_frame_idx)
+        if self.aris_img is None:
+            if colorize:
+                frame = cv2.imread(self.aris_frames[self.aris_frame_idx])
+                frame_colorized = cv2.applyColorMap(frame, cv2.COLORMAP_TWILIGHT_SHIFTED)  # MAGMA, DEEPGREEN, OCEAN
+                h, w, channels = frame_colorized.shape
+                bytes_per_line = 3 * w
+                qimg = QtGui.QImage(frame_colorized.data, w, h, bytes_per_line, QtGui.QImage.Format_RGB888).rgbSwapped()
+                self.aris_img = QtGui.QPixmap(qimg)
+            else:
+                self.aris_img = QtGui.QPixmap(self.aris_frames[self.aris_frame_idx])
+        return self.aris_img, frametime
+    
+
+    def get_gopro_frame(self, aris_frametime):
+        new_frame_idx = self.aristime_to_gopro_idx(aris_frametime)
+        
+        if new_frame_idx != self.gopro_frame_idx:
+            self.gopro_frame_idx = new_frame_idx
+            self.gopro_clip.set(cv2.CAP_PROP_POS_FRAMES, self.gopro_frame_idx)
+            has_frame, gopro_frame = self.gopro_clip.read()
+            if has_frame:
+                img = cv2.cvtColor(gopro_frame, cv2.COLOR_BGR2RGB)
+                q_img = QtGui.QImage(img, img.shape[1], img.shape[0], QtGui.QImage.Format_RGB888)
+                self.gopro_img = QtGui.QPixmap(q_img)
+        
+        return self.gopro_img, self.gopro_frame_idx
+    
+        
 
 def gopro_sorting_key(filename):
-    base = os.path.splitext(basename(filename))[0]
+    base = os.path.splitext(folder_basename(filename))[0]
     #prefix = base[:2]   # GX
     chapter = base[2:4]  # 01
     vid = base[4:8]      # 0010
@@ -43,47 +119,6 @@ def parse_gopro_timestamp(t_string):
     return int(m) * 60 + int(s) + float(ms) / 1000
 
 
-_aris_metadata_cache = {}
-def get_aris_metadata(aris_data_dir):
-    if aris_data_dir in _aris_metadata_cache:
-        return _aris_metadata_cache[aris_data_dir]
-    
-    aris_basename = basename(aris_data_dir)
-    with open(os.path.join(aris_data_dir, aris_basename + '_metadata.yaml'), 'r') as f:
-        file_meta = yaml.safe_load(f)
-    
-    frame_meta = pd.read_csv(os.path.join(aris_data_dir, aris_basename + '_frames.csv'))
-    
-    try:
-        with open(os.path.join(aris_data_dir, aris_basename + '_marks.yaml'), 'r') as f:
-            marks_meta = yaml.safe_load(f)
-    except IOError:
-        marks_meta = None
-    
-    _aris_metadata_cache[aris_data_dir] = (file_meta, frame_meta, marks_meta)
-    return file_meta, frame_meta, marks_meta
-
-
-_gopro_metadata_cache = {}
-def get_gopro_metadata(gopro_files_dir):
-    if gopro_files_dir in _gopro_metadata_cache:
-        return _gopro_metadata_cache[gopro_files_dir]
-    
-    metadata = pd.read_csv(os.path.join(gopro_files_dir, 'gopro_metadata.csv'))
-    _gopro_metadata_cache[gopro_files_dir] = metadata
-    return metadata
-
-
-_gantry_metadata_cache = {}
-def get_gantry_metadata(gantry_files_dir):
-    if gantry_files_dir in _gantry_metadata_cache:
-        return _gantry_metadata_cache[gantry_files_dir]
-    
-    metadata = pd.read_csv(os.path.join(gantry_files_dir, 'gantry_metadata.csv'))
-    _gantry_metadata_cache[gantry_files_dir] = metadata
-    return metadata
-
-
 _optical_flow_cache = {}
 def get_optical_flow(dataset_path):
     if dataset_path in _optical_flow_cache:
@@ -93,7 +128,7 @@ def get_optical_flow(dataset_path):
         data_folder = dataset_path
     else:
         data_folder = os.path.dirname(dataset_path)
-    data_id = os.path.splitext(basename(dataset_path))[0]
+    data_id = os.path.splitext(folder_basename(dataset_path))[0]
     cache_file = os.path.join(data_folder, data_id + '_flow.csv')
     
     flow = np.squeeze(pd.read_csv(cache_file, header=None).to_numpy())
@@ -109,174 +144,6 @@ def get_optical_flow(dataset_path):
 def smooth_data(data, window_length):
     cumsum_vec = np.cumsum(np.insert(data, 0, 0)) 
     return (cumsum_vec[window_length:] - cumsum_vec[:-window_length]) / window_length
-
-
-class MatchingContext:
-    def __init__(self, aris_dir, gopro_file, gantry_file):
-        self.aris_basename = basename(aris_dir)
-        self.gopro_basename = basename(gopro_file)
-        self.gantry_basename = basename(gantry_file)
-        
-        # Load ARIS data
-        self.aris_frames_path = os.path.join(aris_dir, 'polar')
-        if not os.path.isdir(self.aris_frames_path):
-            print(f'ARIS dataset {self.aris_basename} does not contain polar frames, using raw frames instead')
-            self.aris_frames_path = aris_dir
-        
-        self.aris_file_meta, self.aris_frames_meta, self.aris_marks_meta = get_aris_metadata(aris_dir)
-        self.aris_frames = sorted(os.path.join(self.aris_frames_path, f) for f in os.listdir(self.aris_frames_path) if f.lower().endswith('.pgm'))
-        self.aris_optical_flow = get_optical_flow(aris_dir)
-        self._aris_frame_idx = 0
-        self._aris_start_frame = 0
-        self._aris_end_frame = len(self.aris_frames) - 1
-        self.aris_tick_step = 1
-        self.aris_motion_onset = None
-        self.aris_frames_total = len(self.aris_frames)
-        self.aris_t0 = self.get_aris_frametime(0)
-        self.aris_duration = self.get_aris_frametime(-1) - self.aris_t0
-        self.aris_img = None
-
-        # Load beginning of motion frame from save file
-        if self.aris_marks_meta and 'onset' in self.aris_marks_meta:
-            onset = max(0, self.aris_marks_meta['onset'])
-            self._aris_start_frame = onset
-            self.aris_motion_onset = onset
-        
-        # Load GoPro clip
-        all_gopro_meta = get_gopro_metadata(os.path.dirname(gopro_file))
-        self.gopro_meta = all_gopro_meta.loc[all_gopro_meta['file'] == self.gopro_basename].iloc[0]
-        self.gopro_clip = cv2.VideoCapture(gopro_file)
-        self.gopro_optical_flow = get_optical_flow(gopro_file)
-        self.gopro_original_creation_time = parse_gopro_datetime(self.gopro_meta['creation_time'])
-        self.gopro_original_creation_time_simple = self.gopro_original_creation_time.strftime('%Y-%m-%d_%H%M%S')
-        self.gopro_frame_idx = -1
-        self.gopro_frames_total = int(self.gopro_clip.get(cv2.CAP_PROP_FRAME_COUNT))
-        self.gopro_fps = self.gopro_clip.get(cv2.CAP_PROP_FPS)
-        self.gopro_offset = 0
-        self.gopro_img = None
-        
-        # Load Gantry recording
-        all_gantry_meta = get_gantry_metadata(os.path.dirname(gantry_file))
-        self.gantry_meta = all_gantry_meta.loc[all_gantry_meta['file'] == self.gantry_basename].iloc[0]
-        self.gantry_data = pd.read_csv(gantry_file)
-        self.gantry_t0 = self.gantry_meta['start_us']
-        self.gantry_onset = self.gantry_meta['onset_us']
-        self.gantry_duration = self.gantry_meta['end_us'] - self.gantry_t0
-        self.gantry_offset = self.gantry_onset - self.gantry_t0
-        
-        self.reload = True
-    
-    @property
-    def aris_frame_idx(self):
-        return self._aris_frame_idx
-    
-    @aris_frame_idx.setter
-    def aris_frame_idx(self, new_val):
-        if self.aris_start_frame < new_val < self.aris_end_frame:
-            self._aris_frame_idx = new_val
-        else:
-            self._aris_frame_idx = self.aris_start_frame
-        self.aris_img = None
-    
-    @property
-    def aris_start_frame(self):
-        return self._aris_start_frame
-    
-    @aris_start_frame.setter
-    def aris_start_frame(self, new_val):
-        self._aris_start_frame = min(new_val, self.aris_end_frame - 1)
-        self.aris_frame_idx = max(self.aris_start_frame, self.aris_frame_idx)
-        
-    @property
-    def aris_end_frame(self):
-        return self._aris_end_frame
-    
-    @aris_end_frame.setter
-    def aris_end_frame(self, new_val):
-        self._aris_end_frame = max(new_val, self.aris_start_frame + 1)
-        self.aris_frame_idx = min(self.aris_frame_idx, self.aris_end_frame)
-    
-    @property
-    def aris_active_frames(self):
-        return self.aris_end_frame - self.aris_start_frame
-    
-    @property
-    def aris_active_duration(self):
-        return self.get_aris_frametime(self.aris_end_frame) - self.get_aris_frametime(self.aris_start_frame)
-    
-    def tick(self):
-        self.aris_img = None
-        self.aris_frame_idx += self.aris_tick_step
-        
-    def get_aris_frame(self, colorize=True):
-        frametime = self.get_aris_frametime(self.aris_frame_idx)
-        if self.aris_img is None:
-            if colorize:
-                frame = cv2.imread(self.aris_frames[self.aris_frame_idx])
-                frame_colorized = cv2.applyColorMap(frame, cv2.COLORMAP_TWILIGHT_SHIFTED)  # MAGMA, DEEPGREEN, OCEAN
-                h, w, channels = frame_colorized.shape
-                bytes_per_line = 3 * w
-                qimg = QtGui.QImage(frame_colorized.data, w, h, bytes_per_line, QtGui.QImage.Format_RGB888).rgbSwapped()
-                self.aris_img = QtGui.QPixmap(qimg)
-            else:
-                self.aris_img = QtGui.QPixmap(self.aris_frames[self.aris_frame_idx])
-        return self.aris_img, frametime
-    
-    def get_aris_frametime(self, frame_idx):
-        # FrameTime = time of recording on PC (µs since 1970)
-        # sonarTimeStamp = time of recording on sonar (µs since 1970), not sure if synchronized to PC time
-        return self.aris_frames_meta['FrameTime'].iloc[frame_idx]
-    
-    def get_aris_frametime_ext(self, frame_idx):
-        if frame_idx < 0:
-            # Note: in contrast to what the header definitions claim, FrameRate is in frames per SECOND!
-            return self.aris_t0 - abs(frame_idx) / np.mean(self.aris_frames_meta['FrameRate']) * 1e6
-        if frame_idx >= self.aris_frames_total:
-            return self.aris_t0 + self.aris_duration + (frame_idx - self.aris_frames_total) / np.mean(self.aris_frames_meta['FrameRate']) * 1e6
-    
-        return self.get_aris_frametime(frame_idx)
-    
-    def aristime_to_gopro_idx(self, aris_frametime):
-        time_from_start = aris_frametime - self.get_aris_frametime(self.aris_start_frame)
-        return int(time_from_start / 1e6 * self.gopro_fps) + self.gopro_offset
-    
-    def get_gopro_frame(self, aris_frametime):
-        new_frame_idx = self.aristime_to_gopro_idx(aris_frametime)
-        
-        if new_frame_idx != self.gopro_frame_idx:
-            self.gopro_frame_idx = new_frame_idx
-            self.gopro_clip.set(cv2.CAP_PROP_POS_FRAMES, self.gopro_frame_idx)
-            has_frame, gopro_frame = self.gopro_clip.read()
-            if has_frame:
-                img = cv2.cvtColor(gopro_frame, cv2.COLOR_BGR2RGB)
-                q_img = QtGui.QImage(img, img.shape[1], img.shape[0], QtGui.QImage.Format_RGB888)
-                self.gopro_img = QtGui.QPixmap(q_img)
-        
-        return self.gopro_img, self.gopro_frame_idx
-    
-    def get_usable_gopro_range(self):
-        # We can skip so much of the gopro clip that it barely starts playing
-        range_min = -int(self.aris_duration / 10e3 // self.gopro_fps)
-        # But we can also delay playback so much that it barely starts playing
-        range_max = int(self.gopro_frames_total)
-        
-        return range_min, range_max
-    
-    def get_gantry_odom(self, aris_frametime):
-        time_after_onset = aris_frametime - self.get_aris_frametime(self.aris_start_frame)
-        timepos = self.gantry_t0 + self.gantry_offset + time_after_onset
-        
-        if timepos < self.gantry_t0:
-            timepos = self.gantry_t0
-        if timepos > self.gantry_t0 + self.gantry_duration:
-            timepos = self.gantry_t0 + self.gantry_duration
-        
-        t = self.gantry_data['timestamp_us']   
-        xi = np.interp(timepos, t, self.gantry_data['x'])
-        yi = np.interp(timepos, t, self.gantry_data['y'])
-        zi = np.interp(timepos, t, self.gantry_data['z'])
-        return (xi, yi, zi), timepos
-
 
 
 @dataclass
@@ -601,7 +468,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.table_associations = QtWidgets.QTableWidget(len(self.aris_data_dirs), 3)
         self.table_associations.setHorizontalHeaderLabels(['ARIS', 'GoPro', 'Gantry'])
         for idx, aris_file in enumerate(self.aris_data_dirs):
-            self.table_associations.setItem(idx, 0, QtWidgets.QTableWidgetItem(basename(aris_file)))
+            self.table_associations.setItem(idx, 0, QtWidgets.QTableWidgetItem(folder_basename(aris_file)))
         self.table_associations.setItem(0, 1, QtWidgets.QTableWidgetItem(' ' * len(self.gopro_files[0])))
         self.table_associations.setItem(0, 2, QtWidgets.QTableWidgetItem(' ' * len(self.gantry_files[0])))
         self.table_associations.resizeColumnsToContents()
@@ -779,7 +646,7 @@ class MainWindow(QtWidgets.QMainWindow):
             
             associated = '*' if idx in self.aris_associated else ' '
             motion_onset = 'm' if 'onset' in marks else ' '
-            aris_items.append(f'({associated}) ({motion_onset})  {idx:02}: {basename(item)}')
+            aris_items.append(f'({associated}) ({motion_onset})  {idx:02}: {folder_basename(item)}')
         
         # Context may not be initialized yet, so don't use context.get_aris_frametime()
         current_aris_start = aris_frames_meta['FrameTime'][0]
@@ -791,7 +658,7 @@ class MainWindow(QtWidgets.QMainWindow):
         for idx,item in enumerate(self.gopro_files):
             # GoPro clips are already cut to where the motion starts
             # Can't match metadata based on index since we have custom sorting
-            gopro_file_meta = gopro_meta[gopro_meta['file'] == basename(item)].iloc[0]
+            gopro_file_meta = gopro_meta[gopro_meta['file'] == folder_basename(item)].iloc[0]
             gopro_creation_time = parse_gopro_datetime(gopro_file_meta['creation_time'])
             # TODO so far we showed everything in localtime, but hardcoding the offset is ugly...
             gopro_creation_time = gopro_creation_time.replace(hour=gopro_creation_time.hour + 2)
@@ -805,7 +672,7 @@ class MainWindow(QtWidgets.QMainWindow):
             associated = '*' if idx in self.gopro_associated else ' '
             overlapping = 'x' if gopro_clip_start < current_aris_end and gopro_clip_end > current_aris_start else ' '
             # TODO overlapping is not useful because for some reason all footage from day1 has the same creation date
-            gopro_items.append(f'({associated}) ( )  {idx:02}: {gopro_datetime_simple}  {basename(item)}')
+            gopro_items.append(f'({associated}) ( )  {idx:02}: {gopro_datetime_simple}  {folder_basename(item)}')
         
         # Gantry
         gantry_items = []
@@ -818,7 +685,7 @@ class MainWindow(QtWidgets.QMainWindow):
             # Mark gantry files which have timestamps overlapping with selected ARIS file
             associated = '*' if idx in self.gantry_associated else ' '
             overlapping = 'x' if gantry_file_start < current_aris_end and gantry_file_end > current_aris_start else ' '
-            gantry_items.append(f'({associated}) ({overlapping})  {idx:02}: {basename(item)}')
+            gantry_items.append(f'({associated}) ({overlapping})  {idx:02}: {folder_basename(item)}')
         
         def repopulate(dropdown, items):
             idx = max(0, dropdown.currentIndex())
@@ -933,7 +800,7 @@ class MainWindow(QtWidgets.QMainWindow):
         gopro_file = self.gopro_files[gopro_idx]
         gantry_file = self.gantry_files[gantry_idx]
         
-        self.context = MatchingContext(aris_file, gopro_file, gantry_file)
+        self.context = QtMatchingContext(aris_file, gantry_file, gopro_file)
         
         self.context.aris_tick_step = self.spinner_playback_fpu.value()
         
@@ -987,9 +854,9 @@ class MainWindow(QtWidgets.QMainWindow):
         
         association: Association = self.association_details.get(aris_idx)
         if association and (not association.has_gopro() or association.gopro_idx == gopro_idx) and (not association.has_gantry() or association.gantry_idx == gantry_idx):
-                self.notes_widget.setPlainText(association.notes)
-                self.check_associate_gopro.setChecked(association.has_gopro())
-                self.check_associate_gantry.setChecked(association.has_gantry())
+            self.notes_widget.setPlainText(association.notes)
+            self.check_associate_gopro.setChecked(association.has_gopro())
+            self.check_associate_gantry.setChecked(association.has_gantry())
         else:
             self.notes_widget.setPlainText('')
             #self.check_associate_gopro.setChecked(True)

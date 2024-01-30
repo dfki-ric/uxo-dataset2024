@@ -6,5 +6,5 @@ fi
 
 for gopro_file in $1/*.mp4; do
     echo "$gopro_file ..."
-    python3 ./calc_optical_flow_gopro.py $gopro_file
+    python3 ./src/gopro_calc_optical_flow.py $gopro_file
 done

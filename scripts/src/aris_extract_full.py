@@ -8,8 +8,8 @@ from enum import Enum
 import numpy as np
 import cv2
 
-import aris
-from aris import get_beamcount_from_pingmode, FileHeaderFields as ArisFile, FrameHeaderFields as ArisFrame
+import aris_definitions as aris_definitions
+from aris_definitions import get_beamcount_from_pingmode, FileHeaderFields as ArisFile, FrameHeaderFields as ArisFrame
 
 
 class _Struct:
@@ -31,8 +31,8 @@ class _Struct:
         
         return file_header
 
-FileHeaderStruct = _Struct(aris.FileHeaderDefinition, ArisFile)
-FrameHeaderStruct = _Struct(aris.FrameHeaderDefinition, ArisFrame)
+FileHeaderStruct = _Struct(aris_definitions.FileHeaderDefinition, ArisFile)
+FrameHeaderStruct = _Struct(aris_definitions.FrameHeaderDefinition, ArisFrame)
 
 
 

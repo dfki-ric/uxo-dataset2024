@@ -1,1 +1,0 @@
-The .c file works for extracting the header data, but I didn't implement the frame export before switching to python.
