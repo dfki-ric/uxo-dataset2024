@@ -6,8 +6,9 @@ import pandas as pd
 import h5py as h5
 import cv2
 
+from aris import FileHeaderFields, FrameHeaderFields
 
-# TODO contact Christian Backe regarding dataset management and organization
+# XXX in the end this file was never used
 
 
 def write_aris(hdf: h5.File, match: dict, root: str = '/') -> None:
@@ -25,9 +26,9 @@ def write_aris(hdf: h5.File, match: dict, root: str = '/') -> None:
     with open(get_metafile('metadata.yaml')) as aris_meta_file:
         aris_meta = yaml.safe_load(aris_meta_file)
         
-        num_frames = aris_meta['FrameCount']
-        beam_count = aris_meta['NumRawBeams']
-        bin_count = aris_meta['SamplesPerChannel']
+        num_frames = aris_meta[FileHeaderFields.frame_count]
+        beam_count = aris_meta[FileHeaderFields.num_raw_beams]
+        bin_count = aris_meta[FileHeaderFields.samples_per_channel]
         
         for key,value in aris_meta:
             aris_group.attrs[key] = value
@@ -40,10 +41,10 @@ def write_aris(hdf: h5.File, match: dict, root: str = '/') -> None:
             meta_group.create_dataset(fm, data=frame_meta[fm])
             
     # Create links to some important datasets
-    aris_group['timestamps'] = meta_group['FrameTime']
-    aris_group['pan'] = meta_group['SonarPan']
-    aris_group['tilt'] = meta_group['SonarTilt']
-    aris_group['roll'] = meta_group['SonarRoll']
+    aris_group['timestamps'] = meta_group[FrameHeaderFields.frame_time]
+    aris_group['pan'] = meta_group[FrameHeaderFields.sonar_pan]
+    aris_group['tilt'] = meta_group[FrameHeaderFields.sonar_tilt]
+    aris_group['roll'] = meta_group[FrameHeaderFields.sonar_roll]
     
     # Add marks if present
     # with open(get_metafile('marks.yaml')) as marks_file:
@@ -183,4 +184,20 @@ def write_distributed_dataset(match_file: str) -> None:
     # - dimension scales
     # - add matching data as required (timezone offsets?)
     # - add meta hdf linking to other hdfs
+    
+    
+    # Kommentare von Christian Backe
+    # https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1005510
+    # - offenes Dateiformat (ok)
+    # - Community Standards?
+    # - Organisation Skripte
+    # - Dokumentation Datensatz
+    #   - Gegenstand der Daten
+    #   - Umstände der Aufnahme
+    #   - Spezifikation der verwendeten Ressourcen (Sensoren, Software, etc)
+    #   - Spezifikation der Datenformate (Dateibaumstruktur, Definition von Bezeichnern, Datentypen, Maßeinheiten, ...)
+    #   - Dokumentation Verarbeitungsschritte
+    #   - tatsächliche und potentielle Anwendungsszenarien
+    #   - Bezug zu verwandten Datensätzen und anderen Publikationen
+    
     
