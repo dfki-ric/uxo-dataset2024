@@ -118,7 +118,12 @@ if __name__ == '__main__':
                     model_dir, 
                     dirs_exist_ok=True, 
                     ignore=lambda src, names: [x for x in names if 'metashape' in x])
-    
-    # Copy additional notes and files
-    shutil.copy(os.path.join(data_root, 'object_notes.md'), out_dir_path)
+
+    # Copy scripts
+    scripts_dir = os.path.join(out_dir_path, 'scripts/')
+    shutil.copytree(os.path.join(os.path.dirname(__file__), '../'), 
+                    scripts_dir, 
+                    dirs_exist_ok=True, 
+                    ignore=lambda src, names: [x for x in names if '__pycache__' in x])
+
     
