@@ -11,7 +11,7 @@ import cv2
 from matching_context import MatchingContext, folder_basename
 
 
-def export_recording(match: pd.Series, data_root: str, out_dir_root: str, gopro_resolution: str = '', overwrite=False):
+def export_recording(match: pd.Series, data_root: str, out_dir_root: str, overwrite=False, gopro_resolution: str = '', gopro_format: str = 'jpg'):
     # Help to resolve the recording locations
     aris_dir = os.path.join(data_root, match['aris_file'])
     gantry_file = os.path.join(data_root, match['gantry_file'])
@@ -59,7 +59,8 @@ def export_recording(match: pd.Series, data_root: str, out_dir_root: str, gopro_
         # GoPro frames
         if ctx.has_gopro:
             gopro_frame, _ = ctx.get_gopro_frame(frametime)
-            cv2.imwrite(os.path.join(rec_gopro, f'{aris_frame_idx:04}.ppm'), gopro_frame)
+            if gopro_frame is not None:
+                cv2.imwrite(os.path.join(rec_gopro, f'{aris_frame_idx:04}.{gopro_format}'), gopro_frame)
     
     # ARIS metadata
     ctx.aris_frames_meta.to_csv(os.path.join(rec_root, 'aris_frame_meta.csv'))
@@ -79,15 +80,19 @@ if __name__ == '__main__':
     parser.add_argument('match_file')
     parser.add_argument('output_dir')
     parser.add_argument('-d', '--data-root', default='')
-    parser.add_argument('-r', '--gopro-resolution', default='')
     parser.add_argument('-o', '--overwrite', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('-r', '--gopro-resolution', default='')
+    parser.add_argument('-f', '--gopro-format', default='jpg')
     
     args = parser.parse_args()
     match_file_path = args.match_file
     out_dir_path = args.output_dir
     data_root = args.data_root if args.data_root else os.path.dirname(match_file_path)
-    gopro_resolution = args.gopro_resolution
     overwrite_existing = args.overwrite
+    gopro_resolution = args.gopro_resolution
+    gopro_format = args.gopro_format
+    
+    print(f'Exporting recordings to {out_dir_path}')
     
     os.makedirs(out_dir_path, exist_ok=True)
     matches = pd.read_csv(match_file_path, converters={
@@ -97,10 +102,23 @@ if __name__ == '__main__':
         'notes': str,
     })
     
+    # Copy recording data
+    recordings_dir = os.path.join(out_dir_path, 'recordings')
     for _,match in matches.iterrows():
         try:
             print(folder_basename(match['aris_file']))
-            export_recording(match, data_root, out_dir_path, gopro_resolution=gopro_resolution, overwrite=overwrite_existing)
+            export_recording(match, data_root, recordings_dir, overwrite=overwrite_existing, gopro_resolution=gopro_resolution, gopro_format=gopro_format)
         except OSError:
             print(' -> already exists, skipping')
             continue
+    
+    # Copy 3d models
+    model_dir = os.path.join(out_dir_path, '3d_models/')
+    shutil.copytree(os.path.join(data_root, '3d_models'), 
+                    model_dir, 
+                    dirs_exist_ok=True, 
+                    ignore=lambda src, names: [x for x in names if 'metashape' in x])
+    
+    # Copy additional notes and files
+    shutil.copy(os.path.join(data_root, 'object_notes.md'), out_dir_path)
+    
