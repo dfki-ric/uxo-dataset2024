@@ -127,8 +127,23 @@ The motion onset identified in the ARIS data was used to trim the other sensors 
 
 
 # Processing the raw data
-To prepare the data from the raw recordings, simply execute the accompanying bash scripts in the indicated order.
+To prepare the data from the raw recordings, simply execute the accompanying bash scripts in the indicated order. Every script contains a short documentation and how it was called to process the data. We recommend running the scripts from the scripts folder.
 
+## Dependencies
+The underlying scripts are python 3 files and use the following dependencies. Check the scripts to find out who needs what specifically.
+- numpy
+- pandas
+- cv2
+- yaml
+- csv
+- matplotlib
+- rosbag
+- ffmpeg
+- pytz
+- PyQt5
+
+
+## Scripts
 **ARIS**
 - *aris_1_extract_all.bash*: extracts the frames and metadata from the ARIS' proprietary format.
 - *aris_2_to_polar.bash*: (optional) convert the raw frames to polar coordinates. Be aware that while this makes them easier to interpret, some data loss is incurred.
@@ -155,5 +170,3 @@ To prepare the data from the raw recordings, simply execute the accompanying bas
 
 # Lessons Learned
 Unfortunately, this dataset was recorded with an ad-hoc setup, resulting in several difficulties down the line. In particular, having an independent recording setup for every sensor caused some major trouble and headaches down the line so that almost any amount of additional integration effort would have been warranted. Furthermore, the GoPro proved to be a suboptimal choice, as it was not possible to easily monitor it from outside the basin, resulting in several lost clips due to low battery and random recording stops. 
-
-

@@ -69,7 +69,7 @@ def view_images(aris_dir):
             cv2.putText(img, f'0: set onset',     (5, h-40), cv2.FONT_HERSHEY_SIMPLEX, .3,  color, 1)
             cv2.putText(img, f'm: mark frame',    (5, h-30), cv2.FONT_HERSHEY_SIMPLEX, .3,  color, 1)
             cv2.putText(img, f's: skip',          (5, h-20), cv2.FONT_HERSHEY_SIMPLEX, .3,  color, 1)
-            cv2.putText(img, f'q: skip',          (5, h-10), cv2.FONT_HERSHEY_SIMPLEX, .3,  color, 1)
+            cv2.putText(img, f'q: quit',          (5, h-10), cv2.FONT_HERSHEY_SIMPLEX, .3,  color, 1)
             
         cv2.imshow('preview', img)
         key = cv2.waitKey(1) & 0xFF

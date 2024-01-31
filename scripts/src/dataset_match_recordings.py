@@ -2,7 +2,6 @@
 import sys
 import os
 import csv
-import yaml
 import numpy as np
 import pandas as pd
 import cv2
