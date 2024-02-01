@@ -1,6 +1,6 @@
 3d_models
 data_raw
 data_processed
-export
+data_export
 __pycache__
 *.pyc

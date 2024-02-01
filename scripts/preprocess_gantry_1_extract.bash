@@ -5,7 +5,7 @@
 # $1: directory where the rosbags have been saved
 # $2: directory where the extracted .csv files will be saved
 # 
-# example: ./gantry_1_extract.bash ../data_raw/gantry/day1/ ../data_processed/gantry/day1/
+# example: ./preprocess_gantry_1_extract.bash ../data_raw/gantry/day1/ ../data_processed/gantry/day1/
 
 if [ "$#" -ne 2 ]; then
     echo "Usage: $0 <gantry-rosbags-dir> <output-dir>"

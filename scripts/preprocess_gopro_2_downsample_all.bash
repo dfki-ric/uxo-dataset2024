@@ -8,7 +8,7 @@
 # $1: folder containing the footage to downsample
 # $2: folder to place the downsampled footage in
 # 
-# example: ./gopro_2_downsample_all.bash ../data_processed/gopro/day1/clips_uhd/ ../data_processed/gopro/day1/clips_sd/
+# example: ./preprocess_gopro_2_downsample_all.bash ../data_processed/gopro/day1/clips_uhd/ ../data_processed/gopro/day1/clips_sd/
 
 if [ "$#" -ne 2 ]; then
     echo "Usage: $0 <input-folder> <output-folder>"

@@ -9,7 +9,7 @@
 # $1: input folder containing the .aris recordings
 # $2: output folder to place the extracted frames and metadata in
 # 
-# example: ./aris_1_extract_all.bash ../data_raw/aris/day1 ../data_processed/aris/day1
+# example: ./preprocess_aris_1_extract_all.bash ../data_raw/aris/day1 ../data_processed/aris/day1
 
 
 if [ "$#" -ne 2 ]; then

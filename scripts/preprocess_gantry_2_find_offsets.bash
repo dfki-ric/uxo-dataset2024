@@ -7,7 +7,7 @@
 # 
 # $1: directory containing the previously extracted .csv gantry crane trajectories
 # 
-# example: ./gantry_2_find_offsets.bash ../data_processed/gantry/day1/
+# example: ./preprocess_gantry_2_find_offsets.bash ../data_processed/gantry/day1/
 
 if [ "$#" -ne 1]; then
     echo "Usage: $0 <gantry-extraction-dir>"

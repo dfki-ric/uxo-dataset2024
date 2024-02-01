@@ -27,7 +27,9 @@ While the gantry crane could be controlled and recorded from ROS, we decided to 
 
 # What was recorded
 The recordings cover 5 different objects of various sizes and state of degradation:
-**TODO more info from Oli**
+
+> ***TODO more info from Oli***
+
 - 100lbs aircraft bomb
 - heavily rusted and deformed incindiary grenade
 - artillery shell in very good condition
@@ -127,7 +129,7 @@ The motion onset identified in the ARIS data was used to trim the other sensors 
 
 
 # Processing the raw data
-To prepare the data from the raw recordings, simply execute the accompanying bash scripts in the indicated order. Every script contains a short documentation and how it was called to process the data. We recommend running the scripts from the scripts folder.
+To prepare the data from the raw recordings, simply execute the accompanying prepocessing and export scripts. Every script contains a short documentation and an example for how it was called to process the data. The called python scripts may have additional command line arguments that are not exposed by the bash scripts.
 
 ## Dependencies
 The underlying scripts are python 3 files and use the following dependencies. Check the scripts to find out who needs what specifically.

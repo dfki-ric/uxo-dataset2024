@@ -9,7 +9,7 @@
 # $1: directory containing the day 1 footage
 # $2: directory to put the extracted clips in
 # 
-# example: ./gopro_1_cut_day1.bash ../data_raw/gopro/day1/ ../data_processed/gopro/day1/clips_uhd/
+# example: ./preprocess_gopro_1_cut_day1.bash ../data_raw/gopro/day1/ ../data_processed/gopro/day1/clips_uhd/
 
 if [ "$#" -ne 2 ]; then
     echo "Usage: $0 <path-to-day1-input-folder> <path-to-output-folder>"

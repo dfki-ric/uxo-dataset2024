@@ -7,7 +7,7 @@
 # 
 # $1: folder containing the cut (and downsampled) GoPro clips
 # 
-# example: ./gopro_3_calc_all_optical_flow.bash ../data_processed/gopro/day1/clips_sd/
+# example: ./preprocess_gopro_3_calc_all_optical_flow.bash ../data_processed/gopro/day1/clips_sd/
 
 if [ "$#" -ne 1 ]; then
     echo "Usage: $0 <path-to-gopro-clip-folder>"

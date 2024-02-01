@@ -5,7 +5,7 @@
 #
 # $1: the output folder of the previous script where the extracted aris recordings were placed in
 #
-# example: ./aris_2_to_polar.bash ../data_processed/aris/day1
+# example: ./preprocess_aris_2_to_polar.bash ../data_processed/aris/day1
 
 if [ "$#" -ne 1 ]; then
     echo "Usage: $0 <path-to-aris-extraction-folders>"

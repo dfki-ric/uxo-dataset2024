@@ -78,7 +78,7 @@ def export_recording(match: pd.Series, data_root: str, out_dir_root: str, overwr
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('match_file')
-    parser.add_argument('output_dir')
+    parser.add_argument('export_dir')
     parser.add_argument('-d', '--data-root', default='')
     parser.add_argument('-o', '--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('-r', '--gopro-resolution', default='')
@@ -86,15 +86,15 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
     match_file_path = args.match_file
-    out_dir_path = args.output_dir
+    export_dir = args.export_dir
     data_root = args.data_root if args.data_root else os.path.dirname(match_file_path)
     overwrite_existing = args.overwrite
     gopro_resolution = args.gopro_resolution
     gopro_format = args.gopro_format
     
-    print(f'Exporting recordings to {out_dir_path}')
-    
-    os.makedirs(out_dir_path, exist_ok=True)
+    # Copy recording data
+    print(f'Exporting recordings to {export_dir}')
+    os.makedirs(export_dir, exist_ok=True)
     matches = pd.read_csv(match_file_path, converters={
         'aris_file': str,
         'gantry_file': str,
@@ -102,8 +102,7 @@ if __name__ == '__main__':
         'notes': str,
     })
     
-    # Copy recording data
-    recordings_dir = os.path.join(out_dir_path, 'recordings')
+    recordings_dir = os.path.join(export_dir, 'recordings')
     for _,match in matches.iterrows():
         try:
             print(folder_basename(match['aris_file']))
@@ -113,17 +112,18 @@ if __name__ == '__main__':
             continue
     
     # Copy 3d models
-    model_dir = os.path.join(out_dir_path, '3d_models/')
-    shutil.copytree(os.path.join(data_root, '3d_models'), 
+    model_dir = os.path.join(export_dir, '3d_models/')
+    shutil.copytree(os.path.join(data_root, '../3d_models'), 
                     model_dir, 
                     dirs_exist_ok=True, 
                     ignore=lambda src, names: [x for x in names if 'metashape' in x])
 
     # Copy scripts
-    scripts_dir = os.path.join(out_dir_path, 'scripts/')
+    scripts_dir = os.path.join(export_dir, 'scripts/')
     shutil.copytree(os.path.join(os.path.dirname(__file__), '../'), 
                     scripts_dir, 
                     dirs_exist_ok=True, 
                     ignore=lambda src, names: [x for x in names if '__pycache__' in x])
 
-    
+    # Copy README
+    shutil.copy(os.path.join(data_root, '../README.md'), export_dir)
