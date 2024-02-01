@@ -36,7 +36,11 @@ class DatasetViewer(QtWidgets.QMainWindow):
         
         # Info boxes
         self._gantry_info = QtWidgets.QLabel()
-        self._frame_info = QtWidgets.QLabel()
+        self._gantry_info.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
+        self._frame_info = QtWidgets.QPlainTextEdit()
+        self._frame_info.setReadOnly(True)
+        self._frame_info.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        # TODO notes box
         
         # Controls
         self._slider = MySlider()
@@ -44,6 +48,15 @@ class DatasetViewer(QtWidgets.QMainWindow):
         self._slider.setSingleStep(1)
         self._slider.setPageStep(10)
         self._slider.valueChanged.connect(self._pos_set)
+        
+        right_side = QtWidgets.QVBoxLayout()
+        right_side.addWidget(self._canvas_gopro)
+        right_side.addWidget(self._gantry_info)
+        right_side.addWidget(self._frame_info)
+        
+        splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
+        splitter.addWidget(self._canvas_aris)
+        splitter.addLayout()
         
         self.show()
     
@@ -93,15 +106,18 @@ class DatasetViewer(QtWidgets.QMainWindow):
             aris = QtGui.QPixmap(self.aris_frames[pos])
         
         gopro = QtGui.QPixmap(cv2.imread(self.gopro_frames[pos]))
-        gantry = self.gantry_data.iloc[pos]
-        frame_meta = self.aris_frame_meta.iloc[pos]
+        gantry = self.gantry_data.iloc[pos, 1:].to_list()
+        frame_meta = self.aris_frame_meta.iloc[pos].to_dict(orient='records')[0]
         
         return aris, gopro, gantry, frame_meta
     
     def show(self):
         aris, gopro, gantry, frame_meta = self.get_data(self.pos)
         
-
+        self._canvas_aris.setPixmap(aris)
+        self._canvas_gopro.setPixmap(gopro)
+        self._gantry_info.setText(str(gantry))
+        self._frame_info.setText('\n'.join(f'{k}: {v}' for k,v in frame_meta.items()))
 
 
 if __name__ == '__main__':
