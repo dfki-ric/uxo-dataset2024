@@ -32,20 +32,16 @@ def extract_bag(bag_file, out_dir_path, time_adjust=0.):
 
     
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Batch extraction of gantry crane rosbags.' 
+    parser = argparse.ArgumentParser(description='Extracts gantry crane trajectory from a rosbag.' 
                                      'NOTE that the gantry crane backend uses local timestamps, '
                                      'which can be fixed by using the -z argument.')
-    parser.add_argument('bags_dir_path', type=str)
+    parser.add_argument('bag_file', type=str)
     parser.add_argument('out_dir_path', type=str)
     
     # The gantry crane backend uses localtime for timestamps :/
     parser.add_argument('-z', '--time_adjust', type=float, default='+2', help='adjust timestamps by that many hours (+/-)')
     args = parser.parse_args(sys.argv[1:])
     
-    bags = sorted(f for f in os.listdir(args.bags_dir_path) if f.lower().endswith('.bag'))
     os.makedirs(args.out_dir_path, exist_ok=True)
-    
-    for bag_file in bags:
-        basename = os.path.splitext(os.path.basename(bag_file))[0]
-        print(f'extracting {basename} ...')
-        extract_bag(os.path.join(args.bags_dir_path, bag_file), args.out_dir_path, args.time_adjust)
+    bag_file = args.bag_file
+    extract_bag(bag_file, args.out_dir_path, args.time_adjust)

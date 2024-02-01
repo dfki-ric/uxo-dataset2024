@@ -1,7 +1,9 @@
 #!/bin/bash
 
 # Calculates the magnitude of the optical flow between each frame of the previously extracted ARIS 
-# recordings. This is not required, but was used to make matching sonar to GoPro data easier.
+# recordings. This is similar to the script for calculating the optical flow magnitude for the GoPro
+# footage. Both of these solely exist to make matching ARIS and GoPro footage easier. The magnitudes 
+# will be written as .csv files placed along the extracted ARIS recording folders.
 # 
 # $1: the output folder of the previous script where the extracted aris recordings were placed in
 # 

@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
-# XXX in the end this script was never used
+# XXX in the end this script was never used.
+# Having to maintain the clip timestamps in two places was deemed too error prone, so without 
+# moving the clip cutting into python this is not useful. The script works though!
 
 import sys
 import os

@@ -1,3 +1,5 @@
+# XXX: Not used, this was an attempt to move the clip cutting into python 
+# to make the timestamps accessible to other scripts
 
 class Timestamp:
     def __init__(self, start, stop) -> None:

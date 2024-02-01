@@ -1,7 +1,15 @@
 #!/bin/bash
 
-# Erster Frame ist erster Frame mit Bewegung.
-# Video stoppt sofort, wenn die Achse steht.
+# Script to cut the GoPro footage from day TWO (!) into individual clips, one per recorded trajectory.
+# The timestamps are specific to day 2 and were manually extracted from the audio track, where it is
+# clearly visible when the motors engaged. The first frame of the clips will be the first frame with 
+# movement. Since the footage was recorded at 5.3k/60fps, this may take a long time. While it is 
+# possible to do the downsampling here (see options below), a separate script exists for this as well.
+# 
+# $1: directory containing the day 2 footage
+# $2: directory to put the extracted clips in
+# 
+# example: ./gopro_1_cut_day2.bash ../data_raw/gopro/day2/ ../data_processed/gopro/day2/clips_uhd/
 
 if [ "$#" -ne 2 ]; then
     echo "Usage: $0 <path-to-day2-input-folder> <path-to-output-folder>"
