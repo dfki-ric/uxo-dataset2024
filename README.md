@@ -146,28 +146,28 @@ The underlying scripts are python 3 files and use the following dependencies. Ch
 
 
 ## Scripts
-**ARIS**
-- *aris_1_extract_all.bash*: extracts the frames and metadata from the ARIS' proprietary format.
-- *aris_2_to_polar.bash*: (optional) convert the raw frames to polar coordinates. Be aware that while this makes them easier to interpret, some data loss is incurred.
-- *aris_3_calc_all_optical_flow.bash*: calculate the optical flow magnitudes for every recording.
-- *aris_4_find_offsets.bash*: a graphical tool to manually find and mark the motion onset in every recording.
 
-**Gantry Crane**
-- *gantry_1_extract.bash*: exports each trajectory's timestamps and xyz position data.
-- *gantry_2_find_offsets.bash*: automatically finds the motion onsets (first change in xyz).
+### Preprocessing
+- *preprocess_aris_1_extract_all.bash*: extracts the frames and metadata from the ARIS' proprietary format.
+- *preprocess_aris_2_to_polar.bash*: (optional) convert the raw frames to polar coordinates. Be aware that while this makes them easier to interpret, some data loss is incurred.
+- *preprocess_aris_3_calc_all_optical_flow.bash*: calculate the optical flow magnitudes for every recording.
+- *preprocess_aris_4_find_offsets.bash*: a graphical tool to manually find and mark the motion onset in every recording.
 
-**GoPro**
-- *gopro_1_cut_day1.bash*: cuts the gopro footage from day 1 into individual clips. The cut points were manually extracted from the audio track.
-- *gopro_1_cut_day2.bash*: cuts the gopro footage from day 2 into individual clips. The cut points were manually extracted from the audio track.
-- *gopro_2_downsample_all.bash*: downsamples the unwieldy 5.3k footage to a more manageable size (check script for details).
-- *gopro_3_calc_all_optical_flow.bash*: calculates the optical flow magnitudes for every clip.
-- *gopro_4_extract_metadata_simple*: extracts the creation time from every GoPro recording. This proved to be unhelpful.
+- *preprocess_gantry_1_extract.bash*: exports each trajectory's timestamps and xyz position data.
+- *preprocess_gantry_2_find_offsets.bash*: automatically finds the motion onsets (first change in xyz).
 
-**Matching**
-- *match_recordings.bash*: a GUI that allows synchronized playback of the different recordings and adjust the offsets between them. The result is a csv containing matching recordings and offsets.
+- *preprocess_gopro_1_cut_day1.bash*: cuts the gopro footage from day 1 into individual clips. The cut points were manually extracted from the audio track.
+- *preprocess_gopro_1_cut_day2.bash*: cuts the gopro footage from day 2 into individual clips. The cut points were manually extracted from the audio track.
+- *preprocess_gopro_2_downsample_all.bash*: downsamples the unwieldy 5.3k footage to a more manageable size (check script for details).
+- *preprocess_gopro_3_calc_all_optical_flow.bash*: calculates the optical flow magnitudes for every clip.
 
-**Export**
+### Dataset assembly
+- *dataaset_match_recordings.bash*: a GUI that allows synchronized playback of the different recordings and adjust the offsets between them. The result is a csv containing matching recordings and offsets.
 - *dataset_export.bash*: copies and extracts the processed data into the final dataset.
+
+### Viewing
+- *view_recording.bash*: simple viewer for stepping through an exported recording.
+
 
 
 # Lessons Learned

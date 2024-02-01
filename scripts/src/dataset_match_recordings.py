@@ -12,6 +12,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PyQt5 import QtCore, QtGui, QtWidgets
 from qrangeslider import QRangeSlider
+from q_custom_widgets import MainWidget, MySlider
 from matching_context import MatchingContext, get_aris_metadata, get_gantry_metadata, get_gopro_metadata, folder_basename
 
 
@@ -162,54 +163,6 @@ class Association:
         return self.gantry_idx >= 0
 
 
-class MainWidget(QtWidgets.QWidget):
-    keyPressed = QtCore.pyqtSignal(int)
-    
-    def __init__(self, master):
-        super().__init__(master)
-        self.setFocusPolicy(QtCore.Qt.StrongFocus)
-        
-    def keyPressEvent(self, event):
-        super().keyPressEvent(event)
-        self.keyPressed.emit(event.key())
-
-
-class MySlider(QtWidgets.QSlider):
-    def __init__(self):
-        super().__init__(QtCore.Qt.Horizontal)
-        self.mousePressPos = None
-        self.setMouseTracking(True)
-        
-    def wheelEvent(self, e):
-        self.setValue(self.value() + np.sign(e.angleDelta().y()) * self.singleStep())
-    
-    def mousePressEvent(self, e):
-        if e.button() == QtCore.Qt.LeftButton:
-            self.mousePressPos = e.pos()
-        else:
-            super().mousePressEvent(e)
-    
-    def mouseMoveEvent(self, e):
-        if self.mousePressPos is not None and e.buttons() & QtCore.Qt.LeftButton:
-            self.update_from_mouse_pos(e)
-        else:
-            super().mouseMoveEvent(e)
-    
-    def mouseReleaseEvent(self, e):
-        if  self.mousePressPos is not None \
-        and e.button() == QtCore.Qt.LeftButton \
-        and e.pos() in self.rect():
-            self.update_from_mouse_pos(e)
-            self.mousePressPos = None
-        else:
-            return super().mouseReleaseEvent(e)
-
-    def update_from_mouse_pos(self, e):
-        e.accept()
-        x = e.pos().x()
-        value = (self.maximum() - self.minimum()) * x / self.width() + self.minimum()
-        self.setValue(int(value))
-        
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -241,9 +194,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self._main_widget = MainWidget(self)
         self._main_widget.keyPressed.connect(self._handle_keypress)
         
-        mono_font = QtGui.QFont('Monospace')
-        mono_font.setStyleHint(QtGui.QFont.TypeWriter)
-        
         # Plots
         self.canvas_aris = QtWidgets.QLabel()
         #self.canvas_aris.setScaledContents(True)
@@ -271,6 +221,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas_flow_plot.updateGeometry()
         
         # UI controls
+        mono_font = QtGui.QFont('Monospace')
+        mono_font.setStyleHint(QtGui.QFont.TypeWriter)
+        
         self.dropdown_select_aris = QtWidgets.QComboBox()
         self.dropdown_select_aris.setFont(mono_font)
         self.dropdown_select_aris.currentIndexChanged.connect(self.reload)
