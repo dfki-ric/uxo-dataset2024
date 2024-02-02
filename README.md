@@ -24,6 +24,13 @@ While the gantry crane could be controlled and recorded from ROS, we decided to 
 - *gantry.csv*: positions of the gantry crane. The positions have been interpolated to the sonar frames' timestamps.
 - *notes.txt*: additional notes taken for the recordings.
 
+## Viewing recordings
+The exported data uses simple, well-established formats, namely .pgm, .jpg, .csv, .yaml and .txt. For convenience, we also provide a script that loads an exported recording and allows to step through datapoints in a synchronized fashion using the arrow keys. To view a recording, use the following command:
+
+```bash
+bash scripts/view_recording.bash data_export/recordings/<recording-folder>
+```
+
 
 # What was recorded
 The recordings cover 5 different objects of various sizes and state of degradation:
@@ -162,7 +169,7 @@ The underlying scripts are python 3 files and use the following dependencies. Ch
 - *preprocess_gopro_3_calc_all_optical_flow.bash*: calculates the optical flow magnitudes for every clip.
 
 ### Dataset assembly
-- *dataaset_match_recordings.bash*: a GUI that allows synchronized playback of the different recordings and adjust the offsets between them. The result is a csv containing matching recordings and offsets.
+- *dataset_match_recordings.bash*: a GUI that allows synchronized playback of the different recordings and adjust the offsets between them. The result is a csv containing matching recordings and offsets.
 - *dataset_export.bash*: copies and extracts the processed data into the final dataset.
 
 ### Viewing
