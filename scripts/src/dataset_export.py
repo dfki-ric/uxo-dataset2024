@@ -12,7 +12,7 @@ from aris_definitions import FrameHeaderFields
 from matching_context import MatchingContext, folder_basename
 
 
-def export_recording(match: pd.Series, data_root: str, out_dir_root: str, overwrite=False, gopro_resolution: str = '', gopro_format: str = 'jpg', trim_from_gopro: bool = True):
+def export_recording(match: pd.Series, data_root: str, out_dir_root: str, gopro_resolution: str = '', gopro_format: str = 'jpg', trim_from_gopro: bool = True):
     # Help to resolve the recording locations
     aris_dir = os.path.join(data_root, match['aris_file'])
     gantry_file = os.path.join(data_root, match['gantry_file'])
@@ -32,17 +32,17 @@ def export_recording(match: pd.Series, data_root: str, out_dir_root: str, overwr
     
     # Create export folders
     rec_root = os.path.join(out_dir_root, ctx.recording_label)
-    os.makedirs(rec_root, exist_ok=overwrite)
+    os.makedirs(rec_root, exist_ok=False)
     
     rec_aris_raw = os.path.join(rec_root, 'aris_raw')
-    os.makedirs(rec_aris_raw, exist_ok=overwrite)
+    os.makedirs(rec_aris_raw, exist_ok=False)
     
     rec_aris_polar = os.path.join(rec_root, 'aris_polar')
-    os.makedirs(rec_aris_polar, exist_ok=overwrite)
+    os.makedirs(rec_aris_polar, exist_ok=False)
     
     if ctx.has_gopro:
         rec_gopro = os.path.join(rec_root, 'gopro')
-        os.makedirs(rec_gopro, exist_ok=overwrite)
+        os.makedirs(rec_gopro, exist_ok=False)
     
     # Export data
     indices = []
@@ -52,12 +52,12 @@ def export_recording(match: pd.Series, data_root: str, out_dir_root: str, overwr
         
         # GoPro frames
         if ctx.has_gopro:
-            # TODO don't get frames when no frame available for timestamp
+            gopro_file = os.path.join(rec_gopro, f'{aris_frame_idx:04}.{gopro_format}')
             gopro_frame, _ = ctx.get_gopro_frame(frametime)
             if gopro_frame is not None:
-                cv2.imwrite(os.path.join(rec_gopro, f'{aris_frame_idx:04}.{gopro_format}'), gopro_frame)
+                cv2.imwrite(gopro_file, gopro_frame)
             
-            # trim_from_gopro: if gopro footage is available, only export data when a gopro frame is also available
+            # If gopro footage is available, only export data when a gopro frame is also available
             if trim_from_gopro and gopro_frame is None:
                 continue
             
@@ -93,7 +93,6 @@ if __name__ == '__main__':
     parser.add_argument('match_file')
     parser.add_argument('export_dir')
     parser.add_argument('-d', '--data-root', default='')
-    parser.add_argument('-o', '--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('-r', '--gopro-resolution', default='')
     parser.add_argument('-f', '--gopro-format', default='jpg')
     parser.add_argument('-t', '--trim-from-gopro', action=argparse.BooleanOptionalAction, default=True)
@@ -102,7 +101,6 @@ if __name__ == '__main__':
     match_file_path = args.match_file
     export_dir = args.export_dir
     data_root = args.data_root if args.data_root else os.path.dirname(match_file_path)
-    overwrite_existing = args.overwrite
     gopro_resolution = args.gopro_resolution
     gopro_format = args.gopro_format
     trim_from_gopro = args.trim_from_gopro
@@ -121,7 +119,12 @@ if __name__ == '__main__':
     for _,match in matches.iterrows():
         try:
             print(folder_basename(match['aris_file']))
-            export_recording(match, data_root, recordings_dir, overwrite=overwrite_existing, gopro_resolution=gopro_resolution, gopro_format=gopro_format, trim_from_gopro=trim_from_gopro)
+            export_recording(match, 
+                             data_root, 
+                             recordings_dir, 
+                             gopro_resolution=gopro_resolution, 
+                             gopro_format=gopro_format, 
+                             trim_from_gopro=trim_from_gopro)
         except OSError:
             print(' -> already exists, skipping')
             continue
