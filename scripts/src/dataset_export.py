@@ -8,10 +8,11 @@ import yaml
 import pandas as pd
 import cv2
 
+from aris_definitions import FrameHeaderFields
 from matching_context import MatchingContext, folder_basename
 
 
-def export_recording(match: pd.Series, data_root: str, out_dir_root: str, overwrite=False, gopro_resolution: str = '', gopro_format: str = 'jpg'):
+def export_recording(match: pd.Series, data_root: str, out_dir_root: str, overwrite=False, gopro_resolution: str = '', gopro_format: str = 'jpg', trim_from_gopro: bool = True):
     # Help to resolve the recording locations
     aris_dir = os.path.join(data_root, match['aris_file'])
     gantry_file = os.path.join(data_root, match['gantry_file'])
@@ -44,10 +45,22 @@ def export_recording(match: pd.Series, data_root: str, out_dir_root: str, overwr
         os.makedirs(rec_gopro, exist_ok=overwrite)
     
     # Export data
+    indices = []
     gantry_data = []
     for aris_frame_idx in range(ctx.aris_start_frame, ctx.aris_end_frame + 1):
         frametime = ctx.get_aris_frametime(aris_frame_idx)
         
+        # GoPro frames
+        if ctx.has_gopro:
+            # TODO don't get frames when no frame available for timestamp
+            gopro_frame, _ = ctx.get_gopro_frame(frametime)
+            if gopro_frame is not None:
+                cv2.imwrite(os.path.join(rec_gopro, f'{aris_frame_idx:04}.{gopro_format}'), gopro_frame)
+            
+            # trim_from_gopro: if gopro footage is available, only export data when a gopro frame is also available
+            if trim_from_gopro and gopro_frame is None:
+                continue
+            
         # ARIS frames
         shutil.copy(ctx.aris_frames_raw[aris_frame_idx], os.path.join(rec_aris_raw, f'{aris_frame_idx:04}.pgm'))
         shutil.copy(ctx.aris_frames_polar[aris_frame_idx], os.path.join(rec_aris_polar, f'{aris_frame_idx:04}.pgm'))
@@ -56,14 +69,14 @@ def export_recording(match: pd.Series, data_root: str, out_dir_root: str, overwr
         (x, y, z), _ = ctx.get_gantry_odom(frametime)
         gantry_data.append((aris_frame_idx, x, y, z))
         
-        # GoPro frames
-        if ctx.has_gopro:
-            gopro_frame, _ = ctx.get_gopro_frame(frametime)
-            if gopro_frame is not None:
-                cv2.imwrite(os.path.join(rec_gopro, f'{aris_frame_idx:04}.{gopro_format}'), gopro_frame)
+        indices.append(aris_frame_idx)
     
-    # ARIS metadata
-    ctx.aris_frames_meta.to_csv(os.path.join(rec_root, 'aris_frame_meta.csv'))
+    if trim_from_gopro and len(indices) != ctx.aris_active_frames:
+        print(f' -> recording was trimmed to frames {indices[0]} to {indices[-1]}')
+    
+    # Relevant ARIS metadata
+    frame_meta_sel = ctx.aris_frames_meta[ctx.aris_frames_meta[FrameHeaderFields.frame_index].isin(indices)]
+    frame_meta_sel.to_csv(os.path.join(rec_root, 'aris_frame_meta.csv'), index=False)
     with open(os.path.join(rec_root, 'aris_file_meta.yaml'), 'w') as f:
         yaml.safe_dump(ctx.aris_file_meta, f)
     
@@ -83,6 +96,7 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--overwrite', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('-r', '--gopro-resolution', default='')
     parser.add_argument('-f', '--gopro-format', default='jpg')
+    parser.add_argument('-t', '--trim-from-gopro', action=argparse.BooleanOptionalAction, default=True)
     
     args = parser.parse_args()
     match_file_path = args.match_file
@@ -91,6 +105,7 @@ if __name__ == '__main__':
     overwrite_existing = args.overwrite
     gopro_resolution = args.gopro_resolution
     gopro_format = args.gopro_format
+    trim_from_gopro = args.trim_from_gopro
     
     # Copy recording data
     print(f'Exporting recordings to {export_dir}')
@@ -106,7 +121,7 @@ if __name__ == '__main__':
     for _,match in matches.iterrows():
         try:
             print(folder_basename(match['aris_file']))
-            export_recording(match, data_root, recordings_dir, overwrite=overwrite_existing, gopro_resolution=gopro_resolution, gopro_format=gopro_format)
+            export_recording(match, data_root, recordings_dir, overwrite=overwrite_existing, gopro_resolution=gopro_resolution, gopro_format=gopro_format, trim_from_gopro=trim_from_gopro)
         except OSError:
             print(' -> already exists, skipping')
             continue

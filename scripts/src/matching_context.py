@@ -132,7 +132,7 @@ class MatchingContext:
     
     @property
     def aris_active_frames(self):
-        return self.aris_end_frame - self.aris_start_frame
+        return self.aris_end_frame - self.aris_start_frame + 1
     
     @property
     def aris_active_duration(self):
@@ -156,12 +156,17 @@ class MatchingContext:
         time_from_start = aris_frametime - self.get_aris_frametime(self.aris_start_frame)
         return int(time_from_start / 1e6 * self.gopro_fps) + self.gopro_offset
     
-    def get_gopro_frame(self, aris_frametime):
+    def get_gopro_frame(self, aris_frametime, exact: bool = True):
         new_frame_idx = self.aristime_to_gopro_idx(aris_frametime)
         
         if new_frame_idx != self.gopro_frame_idx:
+            self.gopro_clip.set(cv2.CAP_PROP_POS_FRAMES, new_frame_idx)
+            clip_pos = self.gopro_clip.get(cv2.CAP_PROP_POS_FRAMES)
+            
+            if exact and clip_pos != new_frame_idx:
+                return None, clip_pos
+            
             self.gopro_frame_idx = new_frame_idx
-            self.gopro_clip.set(cv2.CAP_PROP_POS_FRAMES, self.gopro_frame_idx)
             has_frame, gopro_frame = self.gopro_clip.read()
             if has_frame:
                 self._gopro_frame = gopro_frame

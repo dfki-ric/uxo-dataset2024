@@ -80,17 +80,12 @@ class QtMatchingContext(MatchingContext):
         return self.aris_img, frametime
     
 
-    def get_gopro_frame(self, aris_frametime):
-        new_frame_idx = self.aristime_to_gopro_idx(aris_frametime)
-        
-        if new_frame_idx != self.gopro_frame_idx:
-            self.gopro_frame_idx = new_frame_idx
-            self.gopro_clip.set(cv2.CAP_PROP_POS_FRAMES, self.gopro_frame_idx)
-            has_frame, gopro_frame = self.gopro_clip.read()
-            if has_frame:
-                img = cv2.cvtColor(gopro_frame, cv2.COLOR_BGR2RGB)
-                q_img = QtGui.QImage(img, img.shape[1], img.shape[0], QtGui.QImage.Format_RGB888)
-                self.gopro_img = QtGui.QPixmap(q_img)
+    def get_gopro_frame(self, aris_frametime, exact: bool = True):
+        frame, idx = super().get_gopro_frame(aris_frametime, exact)
+        if frame:
+            img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            q_img = QtGui.QImage(img, img.shape[1], img.shape[0], QtGui.QImage.Format_RGB888)
+            self.gopro_img = QtGui.QPixmap(q_img)
         
         return self.gopro_img, self.gopro_frame_idx
     
@@ -709,7 +704,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas_aris.setPixmap(aris_frame)
         
         # GoPro
-        gopro_frame, gopro_frame_idx = self.context.get_gopro_frame(aris_frametime)
+        gopro_frame, gopro_frame_idx = self.context.get_gopro_frame(aris_frametime, False)
         if gopro_frame:
             self.canvas_gopro.setPixmap(gopro_frame)
             self.slider_gopro_pos.setValue(gopro_frame_idx)

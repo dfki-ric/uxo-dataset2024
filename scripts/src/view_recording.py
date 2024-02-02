@@ -8,6 +8,7 @@ import pandas as pd
 import cv2
 from PyQt5 import QtCore, QtGui, QtWidgets
 
+from aris_definitions import FrameHeaderFields
 from q_custom_widgets import MainWidget, MySlider
 
 
@@ -111,21 +112,25 @@ class DatasetViewer(QtWidgets.QMainWindow):
         self.update()
     
     def get_data(self, pos):
+        aris_file = self.aris_frames[pos]
+        aris_frame_idx = int(os.path.splitext(os.path.basename(aris_file))[0])
         if self._aris_colorize:
-            aris_frame = cv2.imread(self.aris_frames[pos])
+            aris_frame = cv2.imread(aris_file)
             aris_frame = cv2.applyColorMap(aris_frame, cv2.COLORMAP_TWILIGHT_SHIFTED)  # MAGMA, DEEPGREEN, OCEAN
             h, w, channels = aris_frame.shape
             aris = QtGui.QImage(aris_frame.data, w, h, channels * w, QtGui.QImage.Format_RGB888).rgbSwapped()
             aris = QtGui.QPixmap(aris)
         else:
-            aris = QtGui.QPixmap(self.aris_frames[pos])
+            aris = QtGui.QPixmap(aris_file)
         
         if pos < len(self.gopro_frames):
+            # TODO Should look up the correct frame by index?
             gopro = QtGui.QPixmap(self.gopro_frames[pos])
         else:
             gopro = None
         gantry = self.gantry_data.iloc[pos]
-        frame_meta = self.aris_frame_meta.iloc[pos]
+        
+        frame_meta = self.aris_frame_meta.loc[self.aris_frame_meta[FrameHeaderFields.frame_index] == aris_frame_idx].iloc[0]
         
         return aris, gopro, gantry, frame_meta
     
