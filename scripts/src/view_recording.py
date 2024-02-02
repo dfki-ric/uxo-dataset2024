@@ -19,7 +19,7 @@ class DatasetViewer(QtWidgets.QMainWindow):
         self._aris_polar = aris_polar
         self._aris_colorize = aris_colorize
         self._pos = 0
-        self._load_date(recording_dir, aris_polar=aris_polar)
+        self._load_recording(recording_dir, aris_polar=aris_polar)
         
         if use_cache:
             self.get_data = lru_cache(None)(self.get_data)
@@ -40,7 +40,9 @@ class DatasetViewer(QtWidgets.QMainWindow):
         self._frame_info = QtWidgets.QPlainTextEdit()
         self._frame_info.setReadOnly(True)
         self._frame_info.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        # TODO notes box
+        self._notes_info = QtWidgets.QPlainTextEdit()
+        self._notes_info.setReadOnly(True)
+        self._notes_info.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         
         # Controls
         self._slider = MySlider()
@@ -49,23 +51,34 @@ class DatasetViewer(QtWidgets.QMainWindow):
         self._slider.setPageStep(10)
         self._slider.valueChanged.connect(self._pos_set)
         
+        info_boxes = QtWidgets.QHBoxLayout()
+        info_boxes.addWidget(self._frame_info)
+        info_boxes.addWidget(self._notes_info)
+        
         right_side = QtWidgets.QVBoxLayout()
         right_side.addWidget(self._canvas_gopro)
         right_side.addWidget(self._gantry_info)
-        right_side.addWidget(self._frame_info)
+        right_side.addLayout(info_boxes)
+        right_side_wrapper = QtWidgets.QWidget()
+        right_side_wrapper.setLayout(right_side)
         
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         splitter.addWidget(self._canvas_aris)
-        splitter.addLayout()
+        splitter.addWidget(right_side_wrapper)
         
+        self._layout = QtWidgets.QVBoxLayout(self._main_widget)
+        self._layout.addWidget(splitter)
+        self.setCentralWidget(self._main_widget)
+        
+        self.update()
         self.show()
     
     def _load_recording(self, recording_dir: str, aris_polar: bool = True):
         aris_dir = os.path.join(recording_dir, 'aris_' + 'polar' if aris_polar else 'raw')
-        self.aris_frames = sorted([f for f in os.listdir(aris_dir)])
+        self.aris_frames = sorted([os.path.join(aris_dir, f) for f in os.listdir(aris_dir)])
         
         gopro_dir = os.path.join(recording_dir, 'gopro')
-        self.gopro_frames = sorted([f for f in gopro_dir])
+        self.gopro_frames = sorted([os.path.join(gopro_dir, f) for f in os.listdir(gopro_dir)])
         
         gantry_file = os.path.join(recording_dir, 'gantry.csv')
         self.gantry_data = pd.read_csv(gantry_file)
@@ -76,24 +89,24 @@ class DatasetViewer(QtWidgets.QMainWindow):
         self.notes = []
         notes_file = os.path.join(recording_dir, 'notes.txt')
         if os.path.isfile(notes_file):
-            self.notes = open(notes_file).readlines()
+            self.notes = [s.strip() for s in open(notes_file).readlines()]
         
     def _handle_keypress(self, key):
         if key == QtCore.Qt.Key.Key_Left:
             self._pos_adjust(-1)
         elif key == QtCore.Qt.Key.Key_Right:
-            self._pos_adjust(+1)
+            self._pos_adjust(1)
         elif key == QtCore.Qt.Key.Key_Down:
             self._pos_adjust(-10)
         elif key == QtCore.Qt.Key.Key_Up:
-            self._pos_adjust(+10)
+            self._pos_adjust(10)
         
     def _pos_adjust(self, steps):
         self._pos_set(self.pos + steps)
         
     def _pos_set(self, pos):
         self.pos = pos % len(self.aris_frames)
-        self.show()
+        self.update()
     
     def get_data(self, pos):
         if self._aris_colorize:
@@ -105,19 +118,23 @@ class DatasetViewer(QtWidgets.QMainWindow):
         else:
             aris = QtGui.QPixmap(self.aris_frames[pos])
         
-        gopro = QtGui.QPixmap(cv2.imread(self.gopro_frames[pos]))
-        gantry = self.gantry_data.iloc[pos, 1:].to_list()
-        frame_meta = self.aris_frame_meta.iloc[pos].to_dict(orient='records')[0]
+        if pos < len(self.gopro_frames):
+            gopro = QtGui.QPixmap(self.gopro_frames[pos])
+        else:
+            gopro = None
+        gantry = self.gantry_data.iloc[pos].to_list()
+        frame_meta = self.aris_frame_meta.iloc[pos].to_dict()
         
         return aris, gopro, gantry, frame_meta
     
-    def show(self):
-        aris, gopro, gantry, frame_meta = self.get_data(self.pos)
+    def update(self):
+        aris, gopro, gantry, frame_meta = self.get_data(self._pos)
         
         self._canvas_aris.setPixmap(aris)
         self._canvas_gopro.setPixmap(gopro)
         self._gantry_info.setText(str(gantry))
-        self._frame_info.setText('\n'.join(f'{k}: {v}' for k,v in frame_meta.items()))
+        self._frame_info.setPlainText('\n'.join(f'{k}: {v}' for k,v in frame_meta.items()))
+        self._notes_info.setPlainText('\n'.join(self.notes))
 
 
 if __name__ == '__main__':
