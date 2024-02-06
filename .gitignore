@@ -2,5 +2,6 @@
 data_raw
 data_processed
 data_export
+photos
 __pycache__
 *.pyc

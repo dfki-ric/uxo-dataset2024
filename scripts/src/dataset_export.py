@@ -143,5 +143,10 @@ if __name__ == '__main__':
                     dirs_exist_ok=True, 
                     ignore=lambda src, names: [x for x in names if '__pycache__' in x])
 
-    # Copy README
-    shutil.copy(os.path.join(data_root, '../README.md'), export_dir)
+    # Copy README and more
+    other_files = [
+        '../README.md',
+        '../dataset.jpg',
+    ]
+    for file in other_files:
+        shutil.copy(os.path.join(data_root, file), export_dir)
