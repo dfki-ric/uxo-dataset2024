@@ -19,8 +19,8 @@ While the gantry crane could be controlled and recorded from ROS, we decided to 
 - *aris_polar*: directory containing sonar images rendered in polar coordinates.
 - *aris_raw*: directory containing sonar images as recorded by the sonar.
 - *gopro*: directory containing gopro frames matching the sonar images. May be missing for some recordings. Not every sonar frame will have a gopro frame.
-- *aris_file_meta.yaml*: meta data recorded by the sonar for each recording.
-- *aris_frame_meta.csv*: meta data recorded by the sonar for each frame.
+- *aris_file_meta.yaml*: meta data recorded by the sonar for each recording, see [aris-file-sdk](https://github.com/SoundMetrics/aris-file-sdk).
+- *aris_frame_meta.csv*: meta data recorded by the sonar for each frame, see [aris-file-sdk](https://github.com/SoundMetrics/aris-file-sdk).
 - *gantry.csv*: positions of the gantry crane. The positions have been interpolated to the sonar frames' timestamps.
 - *notes.txt*: additional notes taken for the recordings.
 
@@ -35,13 +35,49 @@ bash scripts/view_recording.bash data_export/recordings/<recording-folder>
 # What was recorded
 The recordings cover 5 different objects of various sizes and state of degradation:
 
-> ***TODO more info from Oli***
+## Targets 
 
-- 100lbs aircraft bomb
-- heavily rusted and deformed incindiary grenade
-- artillery shell in very good condition
-- intact mortar shell
-- test cylinder
+### 100lbs aircraft bomb
+- "Standardbombe GP 100 lbs M 30"
+- Heavily rusted
+- Used since WW2
+- Length 737 mm
+- Diameter 208 mm
+- Total weight 51 kg
+- Filling weight 25 kg
+
+### Incindiary grenade
+- "Flüssigkeitsbrandbombe INC 30 lbs"
+- Heavily rusted and deformed
+- Used in WW2
+- Length 442 mm
+- Diameter 127 mm
+- Total weight 11.3 kg
+- Filling weight 3.9 kg
+
+### Mortar shell
+- "120 mm Mörserpatrone DM 81"
+- Good condition
+- Used after WW2
+- Length 580 mm
+- Diameter 120 mm
+- Total weight 12.8 kg
+- Filling weight 2.25 kg
+
+### Artillery shell
+- "10.5 cm Sprenggranate L/4,4"
+- Good condition
+- Used in WW2
+- Length 365 mm
+- Diameter 105 mm
+- Total weight 15.1 kg
+- Filling weight 1.27 kg
+
+### Test cylinder
+? ***TODO***
+
+
+## Recording procedure
 
 Every time the object was exchanged, we followed the following procedure:
 1. first the object was placed in the basin, usually on a pedestal
