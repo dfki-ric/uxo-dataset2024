@@ -74,7 +74,9 @@ The recordings cover 5 different objects of various sizes and state of degradati
 - Filling weight 1.27 kg
 
 ### Test cylinder
-? ***TODO***
+- Length 530 mm
+- Diameter 220 mm
+- Wall thickness
 
 
 ## Recording procedure
@@ -152,10 +154,9 @@ In addition, between 150 and 300 pictures were taken for photogrammetry of every
     - y: 1.053536
     - z: -1.497432
 
-> Note: the portal crane could not reach low enough to estimate the front point. The height was thus estimated from the object diameter and the known depth of the floor.
+**Object point:** (1.174003, 1.053536, -1903.1)
 
-***TODO***
-**Object point:** (1.174003, 1.053536, ?)
+> Note: the portal crane could not reach low enough to estimate the front point. The height was thus estimated from the object diameter, the known depth of the floor, and the PTU mounting dimensions.
 
 
 # How the dataset was prepared
