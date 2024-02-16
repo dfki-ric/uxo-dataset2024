@@ -12,7 +12,7 @@ def usage():
     print(f'{sys.argv[0]} <input-folder> <output-folder>')
 
 
-def aris_frame_to_polar(frame, frame_idx, metadata, norm_intensity=True, interpolate=True, scale=1.):
+def aris_frame_to_polar(frame, frame_idx, metadata, norm_intensity=True, scale=1.):
     frame_meta = metadata.iloc[frame_idx]
     pingmode = frame_meta[FrameHeaderFields.ping_mode]
     bin_count = int(frame_meta[FrameHeaderFields.samples_per_beam])
@@ -45,9 +45,6 @@ def aris_frame_to_polar(frame, frame_idx, metadata, norm_intensity=True, interpo
     frame_half_w = int(np.ceil(last_profile_distance * np.tan(np.deg2rad(beam_range / 2))) * scale)
     frame_h = int((bin_count + bottom_profile_offset) * scale)
     polar_frame = np.zeros((frame_h, frame_half_w * 2), dtype=np.uint8)
-    
-    # The center of the circle is min_radius bins below the image bottom
-    center_y = int((bin_count + min_radius) * scale)
     
     if norm_intensity:
         int_min = np.min(frame)
@@ -83,35 +80,7 @@ def aris_frame_to_polar(frame, frame_idx, metadata, norm_intensity=True, interpo
                 polar_frame[y, x] = intensity
                 
     # In ARIS frames, beams are ordered right to left
-    polar_frame = cv2.flip(polar_frame, 1)
-                
-    if interpolate:
-        mask = np.zeros(polar_frame.shape, dtype=np.uint8)
-        mask[polar_frame == 0] = 1
-        
-        sonar_left_corner = int(np.cos(np.deg2rad(beam_angles[-1, 2] + 90)) * min_radius + frame_half_w)
-        left_rect = np.array([[
-            (0, 0), 
-            (0, frame_h), 
-            (sonar_left_corner, frame_h),
-        ]])
-        cv2.fillPoly(mask, left_rect, 0)
-        
-        sonar_right_corner = int(np.cos(np.deg2rad(beam_angles[0, 1] + 90)) * min_radius + frame_half_w)
-        right_rect = np.array([[
-            (frame_half_w * 2, 0), 
-            (sonar_right_corner, frame_h),
-            (frame_half_w * 2, frame_h), 
-        ]])
-        cv2.fillPoly(mask, right_rect, 0)
-        
-        cv2.ellipse(mask, (frame_half_w, center_y), (int(min_radius), int(min_radius)), 0, 0, 360, 0 -1)
-        cv2.ellipse(mask, (frame_half_w, center_y), (frame_h + int(min_radius), frame_h + int(min_radius)), 0, 0, 360, 0, 10)
-        
-        polar_frame = cv2.inpaint(polar_frame, mask, 3, cv2.INPAINT_TELEA)
-        print('ping')
-        
-    return polar_frame
+    return cv2.flip(polar_frame, 1)
 
 
 if __name__ == '__main__':
