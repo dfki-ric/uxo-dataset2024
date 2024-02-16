@@ -12,7 +12,24 @@ def usage():
     print(f'{sys.argv[0]} <input-folder> <output-folder>')
 
 
-def aris_frame_to_polar(frame, frame_idx, metadata, norm_intensity=True, scale=1.):
+def paint_pixel_antialiased(image: np.ndarray, x: float, y: float, value: int):
+    int_x, frac_x = int(x), x - int(x)
+    int_y, frac_y = int(y), y - int(y)
+
+    # Calculate the contribution for each of the four surrounding pixels
+    contributions = [
+        ((1-frac_x) * (1-frac_y), (int_x, int_y)),
+        ((frac_x) * (1-frac_y), (int_x+1, int_y)),
+        ((1-frac_x) * (frac_y), (int_x, int_y+1)),
+        ((frac_x) * (frac_y), (int_x+1, int_y+1)),
+    ]
+
+    for contribution, (px, py) in contributions:
+        if 0 <= px < image.shape[1] and 0 <= py < image.shape[0]:
+            image[py, px] += value * contribution
+    
+
+def aris_frame_to_polar(frame, frame_idx, metadata, norm_intensity=False, antialiasing=False, scale=1.):
     frame_meta = metadata.iloc[frame_idx]
     pingmode = frame_meta[FrameHeaderFields.ping_mode]
     bin_count = int(frame_meta[FrameHeaderFields.samples_per_beam])
@@ -44,7 +61,7 @@ def aris_frame_to_polar(frame, frame_idx, metadata, norm_intensity=True, scale=1
     beam_range = beam_angles[-1, 2] - beam_angles[0, 1]
     frame_half_w = int(np.ceil(last_profile_distance * np.tan(np.deg2rad(beam_range / 2))) * scale)
     frame_h = int((bin_count + bottom_profile_offset) * scale)
-    polar_frame = np.zeros((frame_h, frame_half_w * 2), dtype=np.uint8)
+    polar_frame = np.zeros((frame_h, frame_half_w * 2), dtype=np.int32)
     
     if norm_intensity:
         int_min = np.min(frame)
@@ -75,12 +92,20 @@ def aris_frame_to_polar(frame, frame_idx, metadata, norm_intensity=True, scale=1
             
             for i in range(cross_distance):
                 angle = start_angle + i * angle_delta
-                x = int(np.cos(np.deg2rad(angle + 90)) * radius + frame_half_w)
-                y = int(frame_h - max(0, np.sin(np.deg2rad(angle + 90)) * radius - min_radius) - 1)
-                polar_frame[y, x] = intensity
+                x = np.cos(np.deg2rad(angle + 90)) * radius + frame_half_w
+                y = frame_h - max(0, np.sin(np.deg2rad(angle + 90)) * radius - min_radius) - 1
                 
+                if antialiasing:
+                    paint_pixel_antialiased(polar_frame, x, y, intensity)
+                else:
+                    polar_frame[int(round(y)), int(round(x))] = intensity
+
+    # Normalize the image to the 0-255 range (required from antialiased pixel painting)
+    cv2.normalize(polar_frame, polar_frame, 0, 255, cv2.NORM_MINMAX)
+    polar_frame = np.round(polar_frame).astype(np.uint8)
+    return polar_frame
     # In ARIS frames, beams are ordered right to left
-    return cv2.flip(polar_frame, 1)
+    #return cv2.flip(polar_frame, 1)
 
 
 if __name__ == '__main__':
