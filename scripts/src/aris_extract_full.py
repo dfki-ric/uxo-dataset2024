@@ -78,7 +78,7 @@ if __name__ == '__main__':
         frame_h = frame_header[ArisFrame.samples_per_beam.value]
         frame_w = get_beamcount_from_pingmode(frame_header[ArisFrame.ping_mode.value])
         frame_data = np.zeros([frame_h, frame_w], dtype=np.uint8)
-        frame_number_padding = int(np.log10(file_header[ArisFile.frame_count.value])) + 1
+        frame_number_padding = 4  #int(np.log10(file_header[ArisFile.frame_count.value])) + 1
         
         # Prepare the frame metadata file
         out_file = open(os.path.join(out_dir_path, filename, filename + '_frames.csv'), 'w')
@@ -93,7 +93,7 @@ if __name__ == '__main__':
             # Write data to ppm
             frame_idx = frame_header[ArisFrame.frame_index.value]
             in_file.readinto(frame_data.data)
-            cv2.imwrite(os.path.join(out_dir_path, filename, f'frame_{frame_idx:0{frame_number_padding}}.pgm'), frame_data)
+            cv2.imwrite(os.path.join(out_dir_path, filename, f'{frame_idx:0{frame_number_padding}}.pgm'), frame_data)
             
             # Read next header
             frame_header = FrameHeaderStruct.read(in_file)

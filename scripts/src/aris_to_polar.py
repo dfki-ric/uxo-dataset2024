@@ -5,11 +5,16 @@ import numpy as np
 import pandas as pd
 import cv2
 
+try:
+    from tqdm import tqdm
+except ImportError:
+    tqdm = None
+
 from aris_definitions import get_beamcount_from_pingmode, BeamWidthsAris3000_64, BeamWidthsAris3000_128, FrameHeaderFields
 
 
 def usage():
-    print(f'{sys.argv[0]} <input-folder> <output-folder>')
+    print(f'{sys.argv[0]} <input-folder> <output-folder> [frame-metadata-csv]')
 
 
 def paint_pixel_antialiased(image: np.ndarray, x: float, y: float, value: int):
@@ -109,7 +114,7 @@ def aris_frame_to_polar(frame, frame_idx, metadata, norm_intensity=False, antial
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 3:
+    if not 3 <= len(sys.argv) <4:
         usage()
         raise RuntimeError('Wrong number of arguments')
     
@@ -120,16 +125,30 @@ if __name__ == '__main__':
         in_dir_path = in_dir_path[:-1]
     basename = os.path.basename(in_dir_path)
     
+    if len(sys.argv) > 3:
+        frames_meta_file = sys.argv[3]
+    else:
+        frames_meta_file = os.path.join(in_dir_path, f'{basename}_frames.csv')
+        
     os.makedirs(out_dir_path, exist_ok=True)
     
-    with open(os.path.join(in_dir_path, f'{basename}_frames.csv'), 'r') as frames_meta_file:
+    with open(frames_meta_file, 'r') as frames_meta_file:
         metadata = pd.read_csv(frames_meta_file)
     
-        for f in sorted(os.listdir(in_dir_path)):
+        if tqdm:
+            the_range = lambda x: tqdm(range(x))
+        else:
+            the_range = lambda x: x
+    
+        for f in the_range(sorted(os.listdir(in_dir_path))):
             if not f.lower().endswith('.pgm'):
                 continue
             
-            frame_idx = int(f.split('_')[1].split('.')[0])
+            frame_name = f
+            if '_' in frame_name:
+                frame_name = f[f.index('_') + 1:]
+            
+            frame_idx = int(os.path.splitext(frame_name)[0])
             frame = cv2.imread(os.path.join(in_dir_path, f), cv2.IMREAD_UNCHANGED)
             polar = aris_frame_to_polar(frame, frame_idx, metadata)
             
