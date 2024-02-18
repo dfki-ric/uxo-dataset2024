@@ -44,21 +44,28 @@ if __name__ == '__main__':
         print(f'{out_file} already exists, skipping')
         sys.exit(0)
     
-    clip = cv2.VideoCapture(args.gopro_file)
-    num_frames = int(clip.get(cv2.CAP_PROP_FRAME_COUNT))
+    class GoproIterator:
+        def __init__(self, gopro_file) -> None:
+            self._clip = cv2.VideoCapture(args.gopro_file)
+            self._num_frames = int(self._clip.get(cv2.CAP_PROP_FRAME_COUNT))
+        
+        def __iter__(self):
+            for idx in range(len(self)):
+                self._clip.set(cv2.CAP_PROP_POS_FRAMES, idx)
+                has_frame, frame = self._clip.read()
+                if not has_frame:
+                    break
+                yield cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                
+        def __len__(self):
+            return self._num_frames
     
-    def gopro_frame_iterator():
-        for idx in range(num_frames):
-            clip.set(cv2.CAP_PROP_POS_FRAMES, idx)
-            has_frame, frame = clip.read()
-            if not has_frame:
-                break
-            yield cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    iter = GoproIterator(args.gopro_file)
     
     if args.method == 'lk':
-        flow = calc_optical_flow_lk(gopro_frame_iterator, args.method, flow_params_lk, feature_params_lk)
+        flow = calc_optical_flow_lk(iter, args.method, flow_params_lk, feature_params_lk)
     elif args.method == 'farnerback':
-        flow = calc_optical_flow_farnerback(gopro_frame_iterator, args.method, flow_params_farneback)
+        flow = calc_optical_flow_farnerback(iter, args.method, flow_params_farneback)
     else:
         raise ValueError('Invalid method')
 

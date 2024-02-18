@@ -9,6 +9,7 @@ import os
 import ffmpeg
 import csv
 import argparse
+from tqdm import tqdm
 
 from gopro_timestamps import day1, day2
 
@@ -35,7 +36,7 @@ if __name__ == '__main__':
         writer = csv.writer(out_file)
         writer.writerow(['file', 'creation_time', 'original_start', 'original_end'])
         
-        for gopro_file in sorted(os.listdir(args.gopro_dir_path)):
+        for gopro_file in tqdm(sorted(os.listdir(args.gopro_dir_path))):
             if not gopro_file.lower().endswith('.mp4'):
                 continue
             

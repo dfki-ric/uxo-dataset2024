@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from tqdm import tqdm
 
 
 def calc_overall_flow(flow):
@@ -11,11 +12,11 @@ def calc_overall_flow(flow):
 
 def calc_optical_flow_farnerback(frame_iterator, method, flow_params):
     overall_flow = []
-    prev_frame = next(frame_iterator())
+    prev_frame = next(frame_iterator)
     
     # Farnerback dense flow
     prev_flow = None        
-    for frame in frame_iterator():
+    for frame in tqdm(frame_iterator):
         flow = cv2.calcOpticalFlowFarneback(prev_frame, frame, None, **flow_params)
         magnitude = calc_overall_flow(flow)
         overall_flow.append(magnitude)
@@ -26,12 +27,12 @@ def calc_optical_flow_farnerback(frame_iterator, method, flow_params):
 
 def calc_optical_flow_lk(frame_iterator, method, flow_params, feature_params=None):
     overall_flow = []
-    prev_frame = next(frame_iterator())
+    prev_frame = next(frame_iterator)
     
     # Lucas-Kanade sparse flow
     feature_finder_interval = 10
     prev_features = None
-    for i,frame in enumerate(frame_iterator()):
+    for i,frame in tqdm(enumerate(frame_iterator)):
         # Find good features to match
         if prev_features is None:
             prev_features = cv2.goodFeaturesToTrack(prev_frame, mask=None, **feature_params)

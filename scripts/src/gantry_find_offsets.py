@@ -3,6 +3,7 @@ import sys
 import os
 import csv
 import pandas as pd
+from tqdm import tqdm
 
 
 def usage():
@@ -37,7 +38,7 @@ if __name__ == '__main__':
         writer = csv.writer(out_file)
         writer.writerow(['file', 'start_us', 'end_us', 'onset_us'])
         
-        for csv_file in sorted(os.listdir(csv_dir_path)):
+        for csv_file in tqdm(sorted(os.listdir(csv_dir_path))):
             if not csv_file.lower().endswith('.csv'):
                 continue
             

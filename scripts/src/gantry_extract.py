@@ -4,6 +4,7 @@ import os
 import argparse
 import csv
 import rosbag
+from tqdm import tqdm
 
 
 def stamp_to_microseconds(stamp):
@@ -20,7 +21,8 @@ def extract_bag(bag_file, out_dir_path, time_adjust=0.):
         # Header
         writer.writerow(['timestamp_us', 'x', 'y', 'z'])
         
-        for _, msg, _ in bag.read_messages('/odom'):
+        num_msgs = bag.get_message_count('/odom')
+        for _, msg, _ in tqdm(bag.read_messages('/odom'), total=num_msgs):
             stamp = msg.header.stamp
             
             t = stamp_to_microseconds(stamp) + time_adjust * 3600 * 1e6

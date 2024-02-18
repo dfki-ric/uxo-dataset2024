@@ -10,7 +10,7 @@
 # 
 # example: ./dataset_2_export.bash ../data_processed/matches_day1.csv ../data_export/
 
-if [ "$#" -ne 1 ]; then
+if [ "$#" -ne 2 ]; then
     echo "Usage: $0 <csv-match-file> <export-folder>"
     exit 1
 fi

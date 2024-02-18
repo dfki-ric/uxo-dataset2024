@@ -4,11 +4,7 @@ import os
 import numpy as np
 import pandas as pd
 import cv2
-
-try:
-    from tqdm import tqdm
-except ImportError:
-    tqdm = None
+from tqdm import tqdm
 
 from aris_definitions import get_beamcount_from_pingmode, BeamWidthsAris3000_64, BeamWidthsAris3000_128, FrameHeaderFields
 
@@ -129,18 +125,13 @@ if __name__ == '__main__':
         frames_meta_file = sys.argv[3]
     else:
         frames_meta_file = os.path.join(in_dir_path, f'{basename}_frames.csv')
-        
+    
     os.makedirs(out_dir_path, exist_ok=True)
     
     with open(frames_meta_file, 'r') as frames_meta_file:
         metadata = pd.read_csv(frames_meta_file)
-    
-        if tqdm:
-            the_range = lambda x: tqdm(range(x))
-        else:
-            the_range = lambda x: x
-    
-        for f in the_range(sorted(os.listdir(in_dir_path))):
+
+        for f in tqdm(sorted(os.listdir(in_dir_path))):
             if not f.lower().endswith('.pgm'):
                 continue
             

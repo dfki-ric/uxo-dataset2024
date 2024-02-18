@@ -7,6 +7,7 @@ import shutil
 import yaml
 import pandas as pd
 import cv2
+from tqdm import tqdm
 
 from aris_definitions import FrameHeaderFields
 from matching_context import MatchingContext, folder_basename
@@ -47,7 +48,7 @@ def export_recording(match: pd.Series, data_root: str, out_dir_root: str, gopro_
     # Export data
     indices = []
     gantry_data = []
-    for aris_frame_idx in range(ctx.aris_start_frame, ctx.aris_end_frame + 1):
+    for aris_frame_idx in tqdm(range(ctx.aris_start_frame, ctx.aris_end_frame + 1)):
         frametime = ctx.get_aris_frametime(aris_frame_idx)
         
         # GoPro frames
@@ -130,6 +131,7 @@ if __name__ == '__main__':
             continue
     
     # Copy 3d models
+    print('Copying 3d models...')
     model_dir = os.path.join(export_dir, '3d_models/')
     shutil.copytree(os.path.join(data_root, '../3d_models'), 
                     model_dir, 
@@ -137,6 +139,7 @@ if __name__ == '__main__':
                     ignore=lambda src, names: [x for x in names if 'metashape' in x])
 
     # Copy scripts
+    print('Copying scripts...')
     scripts_dir = os.path.join(export_dir, 'scripts/')
     shutil.copytree(os.path.join(os.path.dirname(__file__), '../'), 
                     scripts_dir, 
@@ -144,9 +147,12 @@ if __name__ == '__main__':
                     ignore=lambda src, names: [x for x in names if '__pycache__' in x])
 
     # Copy README and more
+    print('Tidying up...')
     other_files = [
         '../README.md',
         '../dataset.jpg',
     ]
     for file in other_files:
         shutil.copy(os.path.join(data_root, file), export_dir)
+
+    print(f'Done! Find your dataset at {export_dir}')

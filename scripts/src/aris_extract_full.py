@@ -7,6 +7,7 @@ import yaml
 from enum import Enum
 import numpy as np
 import cv2
+from tqdm import tqdm
 
 import aris_definitions as aris_definitions
 from aris_definitions import get_beamcount_from_pingmode, FileHeaderFields as ArisFile, FrameHeaderFields as ArisFrame
@@ -78,7 +79,8 @@ if __name__ == '__main__':
         frame_h = frame_header[ArisFrame.samples_per_beam.value]
         frame_w = get_beamcount_from_pingmode(frame_header[ArisFrame.ping_mode.value])
         frame_data = np.zeros([frame_h, frame_w], dtype=np.uint8)
-        frame_number_padding = 4  #int(np.log10(file_header[ArisFile.frame_count.value])) + 1
+        num_frames = file_header[ArisFile.frame_count.value]
+        frame_number_padding = 4  #int(np.log10(num_frames)) + 1
         
         # Prepare the frame metadata file
         out_file = open(os.path.join(out_dir_path, filename, filename + '_frames.csv'), 'w')
@@ -86,17 +88,19 @@ if __name__ == '__main__':
         writer.writeheader()
         
         # Write frame metadata and frames
-        while frame_header is not None:
-            # Write header to csv
-            writer.writerow(frame_header)
-            
-            # Write data to ppm
-            frame_idx = frame_header[ArisFrame.frame_index.value]
-            in_file.readinto(frame_data.data)
-            cv2.imwrite(os.path.join(out_dir_path, filename, f'{frame_idx:0{frame_number_padding}}.pgm'), frame_data)
-            
-            # Read next header
-            frame_header = FrameHeaderStruct.read(in_file)
+        with tqdm(total=num_frames) as t:
+            while frame_header is not None:
+                # Write header to csv
+                writer.writerow(frame_header)
+                
+                # Write data to ppm
+                frame_idx = frame_header[ArisFrame.frame_index.value]
+                in_file.readinto(frame_data.data)
+                cv2.imwrite(os.path.join(out_dir_path, filename, f'{frame_idx:0{frame_number_padding}}.pgm'), frame_data)
+                t.update()
+                
+                # Read next header
+                frame_header = FrameHeaderStruct.read(in_file)
     finally:
         if in_file:
             in_file.close()

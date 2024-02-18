@@ -1,3 +1,11 @@
+# Viewing the data
+The exported data uses simple, well-established formats, namely .pgm, .jpg, .csv, .yaml and .txt. For convenience, we provide a script that loads an exported recording and allows to step through datapoints in a synchronized fashion using the arrow keys. To view a recording, use the following command:
+
+```bash
+bash scripts/view_recording.bash data_export/recordings/<recording-folder>
+```
+
+
 # Recording Setup
 The UXO targets were recorded with two sensors mounted on a pan tilt unit (PTU) attached to a gantry crane. In particular, the following hardware was used:
 - SoundMetrics ARIS Explorer 3000 MBES (proprietary format)
@@ -23,13 +31,6 @@ While the gantry crane could be controlled and recorded from ROS, we decided to 
 - *aris_frame_meta.csv*: meta data recorded by the sonar for each frame, see [aris-file-sdk](https://github.com/SoundMetrics/aris-file-sdk).
 - *gantry.csv*: positions of the gantry crane. The positions have been interpolated to the sonar frames' timestamps.
 - *notes.txt*: additional notes taken for the recordings.
-
-## Viewing recordings
-The exported data uses simple, well-established formats, namely .pgm, .jpg, .csv, .yaml and .txt. For convenience, we also provide a script that loads an exported recording and allows to step through datapoints in a synchronized fashion using the arrow keys. To view a recording, use the following command:
-
-```bash
-bash scripts/view_recording.bash data_export/recordings/<recording-folder>
-```
 
 
 # What was recorded
@@ -187,6 +188,7 @@ The underlying scripts are python 3 files and use the following dependencies. Ch
 - ffmpeg
 - pytz
 - PyQt5
+- tqdm
 
 
 ## Scripts

@@ -53,14 +53,23 @@ if __name__ == '__main__':
         frames_path = args.aris_data_dir
     aris_frames = sorted(os.path.join(frames_path, f) for f in os.listdir(frames_path) if f.lower().endswith('.pgm'))
     
-    def aris_frame_iterator():
-        for idx in range(len(aris_frames)):
-            yield cv2.imread(aris_frames[idx], cv2.IMREAD_UNCHANGED)
+    class ImageFileIterator:
+        def __init__(self, image_files) -> None:
+            self._image_files = image_files
+        
+        def __iter__(self):
+            for idx in range(len(self._image_files)):
+                yield cv2.imread(self._image_files[idx], cv2.IMREAD_UNCHANGED)
+                
+        def __len__(self):
+            return len(self._image_files)
+    
+    iter = ImageFileIterator(aris_frames)
     
     if args.method == 'lk':
-        flow = calc_optical_flow_lk(aris_frame_iterator, args.method, flow_params_lk, feature_params_lk)
+        flow = calc_optical_flow_lk(iter, args.method, flow_params_lk, feature_params_lk)
     elif args.method == 'farnerback':
-        flow = calc_optical_flow_farnerback(aris_frame_iterator, args.method, flow_params_farneback)
+        flow = calc_optical_flow_farnerback(iter, args.method, flow_params_farneback)
     else:
         raise ValueError('Invalid method')
     
