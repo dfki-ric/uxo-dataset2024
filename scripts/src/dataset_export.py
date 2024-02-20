@@ -155,4 +155,4 @@ if __name__ == '__main__':
     for file in other_files:
         shutil.copy(os.path.join(data_root, file), export_dir)
 
-    print(f'Done! Find your dataset at {export_dir}')
+    print(f'Done! Find your dataset at: {export_dir}')
