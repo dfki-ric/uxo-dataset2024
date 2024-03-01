@@ -102,7 +102,11 @@ class DatasetViewer(QtWidgets.QMainWindow):
     def _load_recording(self, recording_dir: str, aris_polar: bool = True):
         self._dataset_name = folder_basename(recording_dir)
         
-        aris_dir = os.path.join(recording_dir, 'aris_' + 'polar' if aris_polar else 'raw')
+        if aris_polar:
+            aris_dir = os.path.join(recording_dir, 'aris_polar')
+        if not aris_polar or not os.path.isdir(aris_dir):
+            aris_dir = os.path.join(recording_dir, 'aris_raw')
+        
         self.aris_frames = sorted([os.path.join(aris_dir, f) 
                                    for f in os.listdir(aris_dir)])
         
@@ -188,7 +192,7 @@ class DatasetViewer(QtWidgets.QMainWindow):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('recording_dir')
-    parser.add_argument('-p', '--aris-polar', action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument('-p', '--aris-polar', action=argparse.BooleanOptionalAction, default=False)
     parser.add_argument('-c', '--aris-colorize', action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument('-l', '--use-lru-cache', action=argparse.BooleanOptionalAction, default=False)
 
