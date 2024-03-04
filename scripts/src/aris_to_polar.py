@@ -121,6 +121,77 @@ def aris_frame_to_polar(
     # In ARIS frames, beams are ordered right to left
     # return cv2.flip(polar_frame, 1)
 
+#yet another method to create polar images.
+#In contrast to aris_frame_to_polar this method creates an image based on a given resolution. As a results a pixel in the original data corresponds to a polygon area in this image.
+def aris_frame_to_polar2(frame, frame_idx, metadata,frame_res = 1000):
+    frame_meta = metadata.iloc[frame_idx]
+    pingmode = frame_meta['PingMode']
+    bin_count = int(frame_meta['SamplesPerBeam'])
+    beam_count = get_beamcount_from_pingmode(pingmode)
+    
+    if beam_count == 64:
+        beam_angles = BeamWidthsAris3000_64
+    elif beam_count == 128:
+        beam_angles = BeamWidthsAris3000_128
+    else:
+        raise ValueError(f'Unexpected pingmode {pingmode}')
+        
+    speed_of_sound = frame_meta['SoundSpeed']
+    sample_start_delay = frame_meta['SampleStartDelay']
+    sample_period = frame_meta['SamplePeriod']
+    
+    window_start = sample_start_delay * 1e-6 * speed_of_sound / 2
+    window_length = sample_period * (bin_count+1) * 1e-6 * speed_of_sound / 2
+    range_start = window_start
+    range_end = window_start + window_length
+    bin_length = sample_period * 1e-6 * speed_of_sound / 2
+    
+    beam_range = beam_angles[-1][2] - beam_angles[0][1]
+    frame_half_w = range_end * np.tan(np.deg2rad(beam_range / 2))
+    
+    0 #pixel/m
+    frame_l_n = np.int(np.ceil(range_end * frame_res))
+    frame_w_n = np.int(np.ceil(frame_half_w * 2 * frame_res))
+    
+    polar_frame = np.zeros((frame_l_n, frame_w_n), dtype=np.uint8)
+    
+    #subpixel precision
+    center_img_ref_frame = np.array([frame_w_n/2,frame_l_n])
+    for beam_idx in range(beam_count):
+        start_angle = -beam_angles[beam_idx][1]
+        center_angle = -beam_angles[beam_idx][0]
+        end_angle = -beam_angles[beam_idx][2]
+        
+        for bin_idx in range(bin_count):
+            intensity = frame[bin_idx, beam_idx]
+            bin_start = window_start + sample_period * bin_idx * 1e-6 * speed_of_sound  / 2
+            bin_end = window_start + sample_period * (bin_idx+1) * 1e-6 * speed_of_sound  / 2
+            
+            top_left_img_ref_frame      = np.array([bin_end * np.cos(np.deg2rad(start_angle+90)) * frame_res, -bin_end * np.sin(np.deg2rad(start_angle+90)) * frame_res]) + center_img_ref_frame
+            top_center_img_ref_frame    = np.array([bin_end * np.cos(np.deg2rad(center_angle+90)) * frame_res, -bin_end * np.sin(np.deg2rad(center_angle+90)) * frame_res]) + center_img_ref_frame
+            top_right_img_ref_frame     = np.array([bin_end * np.cos(np.deg2rad(end_angle+90)) * frame_res, -bin_end * np.sin(np.deg2rad(end_angle+90)) * frame_res]) + center_img_ref_frame
+            bottom_right_img_ref_frame  = np.array([bin_start * np.cos(np.deg2rad(end_angle+90)) * frame_res, -bin_start * np.sin(np.deg2rad(end_angle+90)) * frame_res]) + center_img_ref_frame
+            bottom_center_img_ref_frame = np.array([bin_start * np.cos(np.deg2rad(center_angle+90)) * frame_res, -bin_start * np.sin(np.deg2rad(center_angle+90)) * frame_res]) + center_img_ref_frame
+            bottom_left_img_ref_frame   = np.array([bin_start * np.cos(np.deg2rad(start_angle+90)) * frame_res, -bin_start * np.sin(np.deg2rad(start_angle+90)) * frame_res]) + center_img_ref_frame
+            
+            top_left_img_ref_frame[0] = int(np.floor(top_left_img_ref_frame[0]))
+            top_left_img_ref_frame[1] = int(np.ceil(top_left_img_ref_frame[1]))
+            top_center_img_ref_frame[0] = int(np.round(top_center_img_ref_frame[0]))
+            top_center_img_ref_frame[1] = int(np.ceil(top_center_img_ref_frame[1]))
+            top_right_img_ref_frame[0] = int(np.ceil(top_right_img_ref_frame[0]))
+            top_right_img_ref_frame[1] = int(np.ceil(top_right_img_ref_frame[1]))
+            bottom_right_img_ref_frame[0] = int(np.ceil(bottom_right_img_ref_frame[0]))
+            bottom_right_img_ref_frame[1] = int(np.floor(bottom_right_img_ref_frame[1]))
+            bottom_center_img_ref_frame[0] = int(np.round(bottom_center_img_ref_frame[0]))
+            bottom_center_img_ref_frame[1] = int(np.floor(bottom_center_img_ref_frame[1]))
+            bottom_left_img_ref_frame[0] = int(np.floor(bottom_left_img_ref_frame[0]))
+            bottom_left_img_ref_frame[1] = int(np.floor(bottom_left_img_ref_frame[1]))
+            
+            points=np.array([top_left_img_ref_frame,top_center_img_ref_frame,top_right_img_ref_frame,bottom_right_img_ref_frame,bottom_center_img_ref_frame,bottom_left_img_ref_frame])
+
+            cv2.fillPoly(polar_frame, [points.astype(np.int32)], int(intensity))
+
+    return cv2.flip(polar_frame, 1)
 
 if __name__ == "__main__":
     if not 3 <= len(sys.argv) < 4:
