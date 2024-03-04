@@ -193,6 +193,50 @@ def aris_frame_to_polar2(frame, frame_idx, metadata,frame_res = 1000):
 
     return cv2.flip(polar_frame, 1)
 
+def aris_frame_to_polar_csv(frame, frame_idx, metadata):
+    frame_meta = metadata.iloc[frame_idx]
+    pingmode = frame_meta['PingMode']
+    bin_count = int(frame_meta['SamplesPerBeam'])
+    beam_count = get_beamcount_from_pingmode(pingmode)
+    
+    if beam_count == 64:
+        beam_angles = BeamWidthsAris3000_64
+    elif beam_count == 128:
+        beam_angles = BeamWidthsAris3000_128
+    else:
+        raise ValueError(f'Unexpected pingmode {pingmode}')
+        
+    speed_of_sound = frame_meta['SoundSpeed']
+    sample_start_delay = frame_meta['SampleStartDelay']
+    sample_period = frame_meta['SamplePeriod']
+    
+    window_start = sample_start_delay * 1e-6 * speed_of_sound / 2
+    window_length = sample_period * (bin_count+1) * 1e-6 * speed_of_sound / 2
+    range_start = window_start
+    range_end = window_start + window_length
+    bin_length = sample_period * 1e-6 * speed_of_sound / 2
+    
+    beam_range = beam_angles[-1][2] - beam_angles[0][1]
+    
+    df = pd.DataFrame(columns=['beam_idx','sample_idx','sample_start (m)','sample_end (m)','center_angle (deg)','left_angle(deg)','right_angle(deg)','intensity (dB)'])
+
+    #subpixel precision
+
+    for beam_idx in range(beam_count):
+        start_angle = beam_angles[beam_idx][1]
+        center_angle = beam_angles[beam_idx][0]
+        end_angle = beam_angles[beam_idx][2]
+        
+        for bin_idx in range(bin_count):
+            intensity = frame[bin_idx, beam_idx]
+            bin_start = window_start + sample_period * bin_idx * 1e-6 * speed_of_sound  / 2
+            bin_end = window_start + sample_period * (bin_idx+1) * 1e-6 * speed_of_sound  / 2
+            new_row = {'beam_idx' : beam_idx, 'sample_idx' : bin_idx, 'sample_start (m)' : bin_start, 'sample_end (m)' : bin_end, 'center_angle (deg)' : center_angle, 'left_angle(deg)' : start_angle, 'right_angle(deg)': end_angle,'intensity (dB)' : (float(intensity)*80.0/255.0) }
+            df=df.append(new_row,ignore_index=True)
+        
+    # In ARIS frames, beams are ordered right to left
+    return df
+
 if __name__ == "__main__":
     if not 3 <= len(sys.argv) < 4:
         usage()
