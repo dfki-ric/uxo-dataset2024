@@ -155,14 +155,19 @@ class DatasetViewer(QtWidgets.QMainWindow):
         aris_file = self.aris_frames[pos]
         aris_frame_idx = int(os.path.splitext(os.path.basename(aris_file))[0])
         
+        aris_frame = cv2.imread(aris_file)
+        
+        if not self._aris_polar:
+            # In ARIS frames, beams are ordered right to left
+            aris_frame = cv2.flip(aris_frame, -1)
+        
         if self._aris_colorize:
-            aris_frame = cv2.imread(aris_file)
-            aris_frame = cv2.applyColorMap(aris_frame, cv2.COLORMAP_TWILIGHT_SHIFTED)  # MAGMA, DEEPGREEN, OCEAN
-            h, w, channels = aris_frame.shape
-            aris = QtGui.QImage(aris_frame.data, w, h, channels * w, QtGui.QImage.Format_RGB888).rgbSwapped()
-            aris = QtGui.QPixmap(aris)
-        else:
-            aris = QtGui.QPixmap(aris_file)
+            # MAGMA, DEEPGREEN, OCEAN
+            aris_frame = cv2.applyColorMap(aris_frame, cv2.COLORMAP_TWILIGHT_SHIFTED)  
+            
+        h, w, channels = aris_frame.shape
+        aris = QtGui.QImage(aris_frame.data, w, h, channels * w, QtGui.QImage.Format_RGB888).rgbSwapped()
+        aris = QtGui.QPixmap(aris)
         
         if pos < len(self.gopro_frames):
             gopro = QtGui.QPixmap(self.gopro_frames[aris_frame_idx])
@@ -192,7 +197,7 @@ class DatasetViewer(QtWidgets.QMainWindow):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('recording_dir')
-    parser.add_argument('-p', '--aris-polar', action=argparse.BooleanOptionalAction, default=False)
+    parser.add_argument('-p', '--aris-polar', action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument('-c', '--aris-colorize', action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument('-l', '--use-lru-cache', action=argparse.BooleanOptionalAction, default=False)
 
