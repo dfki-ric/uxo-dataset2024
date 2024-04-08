@@ -6,7 +6,7 @@ import pandas as pd
 import cv2
 from tqdm import tqdm
 
-from aris_definitions import (
+from .aris_definitions import (
     get_beamcount_from_pingmode,
     BeamWidthsAris3000_64,
     BeamWidthsAris3000_128,
@@ -150,8 +150,8 @@ def aris_frame_to_polar2(frame, frame_idx, metadata,frame_res = 1000):
     frame_half_w = range_end * np.tan(np.deg2rad(beam_range / 2))
     
     0 #pixel/m
-    frame_l_n = np.int(np.ceil(range_end * frame_res))
-    frame_w_n = np.int(np.ceil(frame_half_w * 2 * frame_res))
+    frame_l_n = int(np.ceil(range_end * frame_res))
+    frame_w_n = int(np.ceil(frame_half_w * 2 * frame_res))
     
     polar_frame = np.zeros((frame_l_n, frame_w_n), dtype=np.uint8)
     
@@ -237,23 +237,15 @@ def aris_frame_to_polar_csv(frame, frame_idx, metadata):
     # In ARIS frames, beams are ordered right to left
     return df
 
-if __name__ == "__main__":
-    if not 3 <= len(sys.argv) < 4:
-        usage()
-        raise RuntimeError("Wrong number of arguments")
-
-    in_dir_path = sys.argv[1]
-    out_dir_path = sys.argv[2]
+def main(in_dir_path, out_dir_path, frames_meta_file=0):
 
     if in_dir_path.endswith("/"):
         in_dir_path = in_dir_path[:-1]
     basename = os.path.basename(in_dir_path)
-
-    if len(sys.argv) > 3:
-        frames_meta_file = sys.argv[3]
-    else:
+    print(in_dir_path)
+    if frames_meta_file==0:
         frames_meta_file = os.path.join(in_dir_path, f"{basename}_frames.csv")
-
+    
     os.makedirs(out_dir_path, exist_ok=True)
 
     with open(frames_meta_file, "r") as frames_meta_file:
@@ -270,7 +262,7 @@ if __name__ == "__main__":
 
             frame_idx = int(os.path.splitext(frame_name)[0])
             frame = cv2.imread(os.path.join(in_dir_path, f), cv2.IMREAD_UNCHANGED)
-            polar = aris_frame_to_polar(frame, frame_idx, metadata)
+            polar = aris_frame_to_polar2(frame, frame_idx, metadata)
             
             outfile_name = os.path.splitext(os.path.basename(f))[0]
             png_compression_level = 9
@@ -280,3 +272,22 @@ if __name__ == "__main__":
                 polar,
                 [cv2.IMWRITE_PNG_COMPRESSION, png_compression_level],
             )
+
+if __name__ == "__main__":
+    if not 3 <= len(sys.argv) < 4:
+        usage()
+        raise RuntimeError("Wrong number of arguments")
+
+    in_dir_path = sys.argv[1]
+    out_dir_path = sys.argv[2]
+
+    if in_dir_path.endswith("/"):
+        in_dir_path = in_dir_path[:-1]
+    basename = os.path.basename(in_dir_path)
+
+    if len(sys.argv) >= 3:
+        frames_meta_file = sys.argv[3]
+    else:
+        frames_meta_file = os.path.join(in_dir_path, f"{basename}_frames.csv")
+
+    main(in_dir_path, out_dir_path, frame_meta_file)
