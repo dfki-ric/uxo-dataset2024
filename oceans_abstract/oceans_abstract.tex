@@ -66,6 +66,20 @@ or Math in Paper Title or Abstract.
 component, formatting, style, styling, insert
 \end{IEEEkeywords}
 
+\section{Motivation}
+
+Submerged munitions in the sea pose an environmental problem \cite{Maser.2020} and a challenge for the growing offshore economy \cite{OECD.2016}. Salvaging munitions is best practice \cite{Frey.2020b}, to avoid detonations whenever possible to protect anthropogenic structures and marine mammals \cite{BendaBeckmann.2015}. To assess whether a suspicious object is indeed a munitions item and whether it is safe to handle, practitioners often rely on images or videos. However, in many situations, such as when working in harbors \cite{DeWeerts.2010}, after storm events \cite{Gallagher.2011} or in waters with very mobile sediments, visibility is limited and, thus, visual inspection is not possible \cite{Rodacy.2001}. Hence, explosive ordnance disposal (EOD) experts use high-frequency sonars like the ARIS Explorer 3000 to produce 2D acoustic images to inspect objects \cite{Frey.2020b}. In contrast to traditional Multibeam echosunders (MBES), these sonar cameras have a large vertical aperture ($\approx$15$\deg$), increasing the ensonified volume, but loosing vertical resolution. While efforts have been made to use the available information for 3D reconstruction, existing solutions can be limited to predefined motion patterns \cite{Guerneve.2018}. In order to facilitate further research, we believe that there is a need for a validation data set with the following properties: 
+\begin{itemize}
+	\item The targets need to be known, e.g. in the form of 3D models.
+	\item The exact position and attitude with respect to the target have to be available for each data frame.
+	\item The motion trajectory should be realistic in the sense that it should be achievable in an actual working environment.
+\end{itemize}
+We created such a data set to allow quantitative analysis for different algorithms. 3D models and trajectories can be compared against each other to evaluate the quality of different solutions.
+
+\section{Setup}
+
+\section{Validation and Preliminary Results}
+
 \section{Abstract submission guidline for OCEANS 2024}
 
 All abstracts must be submitted in PDF format, and must be created by the author(s).
@@ -281,6 +295,9 @@ element symbols.
 
 For papers published in translation journals, please give the English 
 citation first, followed by the original foreign-language citation \cite{b6}.
+
+\bibliographystyle{./IEEE_bibtex_style/IEEEtran}
+\bibliography{./oceans_abstract.bib}
 
 \begin{thebibliography}{00}
 \bibitem{b1} G. Eason, B. Noble, and I. N. Sneddon, ``On certain integrals of Lipschitz-Hankel type involving products of Bessel functions,'' Phil. Trans. Roy. Soc. London, vol. A247, pp. 529--551, April 1955.
