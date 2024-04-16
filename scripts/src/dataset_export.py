@@ -13,7 +13,15 @@ from aris_definitions import FrameHeaderFields
 from matching_context import MatchingContext, folder_basename
 
 
-def export_recording(match: pd.Series, data_root: str, out_dir_root: str, gopro_resolution: str = '', gopro_format: str = 'jpg', trim_from_gopro: bool = True):
+def get_target_type(notes: str) -> str:
+    for line in notes.splitlines():
+        if 'target:' in line.lower():
+            return line.split(':', maxsplit=1)[-1].strip().lower().replace(' ', '_')
+        
+    return 'other'
+
+
+def export_recording(match: pd.Series, data_root: str, out_dir_root: str, gopro_resolution: str = 'fhd', gopro_format: str = 'jpg', trim_from_gopro: bool = True):
     # Help to resolve the recording locations
     aris_dir = os.path.join(data_root, match['aris_file'])
     gantry_file = os.path.join(data_root, match['gantry_file'])
@@ -21,18 +29,18 @@ def export_recording(match: pd.Series, data_root: str, out_dir_root: str, gopro_
     
     # Switch to different GoPro resolution if desired
     if gopro_resolution and gopro_file:
-        gopro_file = re.sub(r'/clips_../', '/' + gopro_resolution + '/', gopro_file)
+        gopro_file = re.sub(r'/clips_.+?/', '/' + gopro_resolution + '/', gopro_file)
         if gopro_file and not os.path.isfile(gopro_file):
             raise ValueError(f'{gopro_resolution}: missing GoPro file {gopro_file}')
     
     # Context makes it much easier to retrieve individual data points from the processed recordings
     ctx = MatchingContext(aris_dir, gantry_file, gopro_file)
     ctx.aris_start_frame = match['aris_onset']
-    ctx.gopro_offset = match['gopro_offset']  # TODO not right yet!
+    ctx.gopro_offset = match['gopro_offset']
     ctx.gantry_offset = match['gantry_offset']
     
     # Create export folders
-    rec_root = os.path.join(out_dir_root, ctx.recording_label)
+    rec_root = os.path.join(out_dir_root, get_target_type(match['notes']), ctx.recording_label)
     os.makedirs(rec_root, exist_ok=False)
     
     rec_aris_raw = os.path.join(rec_root, 'aris_raw')
@@ -94,7 +102,7 @@ if __name__ == '__main__':
     parser.add_argument('match_file')
     parser.add_argument('export_dir')
     parser.add_argument('-d', '--data-root', default='')
-    parser.add_argument('-r', '--gopro-resolution', default='')
+    parser.add_argument('-r', '--gopro-resolution', default='fhd')
     parser.add_argument('-f', '--gopro-format', default='jpg')
     parser.add_argument('-t', '--trim-from-gopro', action=argparse.BooleanOptionalAction, default=True)
     
