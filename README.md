@@ -2,7 +2,7 @@
 The exported data uses simple, well-established formats, namely .pgm, .jpg, .csv, .yaml and .txt. For convenience, we provide a script that loads an exported recording and allows to step through datapoints in a synchronized fashion using the arrow keys. To view a recording, use the following command:
 
 ```bash
-bash scripts/view_recording.bash data_export/recordings/<recording-folder>
+bash scripts/view_recording.bash data_export/recordings/<target_type>/<recording-folder>
 ```
 
 
@@ -21,7 +21,7 @@ While the gantry crane could be controlled and recorded from ROS, we decided to 
 ## Directory structure
 - *3d_models*: the photogrammetry 3d models of the target objects.
 - *scripts*: contains the scripts used for processing and extracting the data.
-- *recordings*: contains one folder per recordings. Each recording folder is named by date and local time.
+- *recordings*: contains one folder per target type, and then one folder per recording named by date and local time.
 
 ## Recording contents
 - *aris_polar*: directory containing sonar images rendered in polar coordinates.
@@ -30,7 +30,7 @@ While the gantry crane could be controlled and recorded from ROS, we decided to 
 - *aris_file_meta.yaml*: meta data recorded by the sonar for each recording, see [aris-file-sdk](https://github.com/SoundMetrics/aris-file-sdk).
 - *aris_frame_meta.csv*: meta data recorded by the sonar for each frame, see [aris-file-sdk](https://github.com/SoundMetrics/aris-file-sdk).
 - *gantry.csv*: positions of the gantry crane. The positions have been interpolated to the sonar frames' timestamps.
-- *notes.txt*: additional notes taken for the recordings.
+- *notes.txt*: additional notes taken for the recording, e.g. PTU tilt, target or trajectory type.
 
 
 # What was recorded
@@ -177,18 +177,12 @@ The motion onset identified in the ARIS data was used to trim the other sensors 
 To prepare the data from the raw recordings, simply execute the accompanying prepocessing and export scripts. Every script contains a short documentation and an example for how it was called to process the data. The called python scripts may have additional command line arguments that are not exposed by the bash scripts.
 
 ## Dependencies
-The underlying scripts are python 3 files and use the following dependencies. Check the scripts to find out who needs what specifically.
-- numpy
-- pandas
-- cv2
-- yaml
-- csv
-- matplotlib
-- rosbag
-- ffmpeg
-- pytz
-- PyQt5
-- tqdm
+The underlying scripts are python 3 files and use the following dependencies. Check the scripts to find out who needs what specifically. Since development has moved away from ROS1, we recommend using the excellent [robostack](https://robostack.github.io/) to setup ROS1 environment. Beyond the packages this will install, you should do the following:
+
+```bash
+mamba install numpy pandas opencv pyyaml matplotlib ffmpeg pytz pyqt tqdm
+pip install rosbag
+```
 
 
 ## Scripts

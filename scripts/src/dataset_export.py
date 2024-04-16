@@ -13,6 +13,14 @@ from aris_definitions import FrameHeaderFields
 from matching_context import MatchingContext, folder_basename
 
 
+def get_target_type(notes: str) -> str:
+    for line in notes.splitlines():
+        if 'target:' in line.lower():
+            return line.split(':', maxsplit=1)[-1].strip().lower().replace(' ', '_')
+        
+    return 'other'
+
+
 def export_recording(match: pd.Series, data_root: str, out_dir_root: str, gopro_resolution: str = '', gopro_format: str = 'jpg', trim_from_gopro: bool = True):
     # Help to resolve the recording locations
     aris_dir = os.path.join(data_root, match['aris_file'])
@@ -28,11 +36,11 @@ def export_recording(match: pd.Series, data_root: str, out_dir_root: str, gopro_
     # Context makes it much easier to retrieve individual data points from the processed recordings
     ctx = MatchingContext(aris_dir, gantry_file, gopro_file)
     ctx.aris_start_frame = match['aris_onset']
-    ctx.gopro_offset = match['gopro_offset']  # TODO not right yet!
+    ctx.gopro_offset = match['gopro_offset']
     ctx.gantry_offset = match['gantry_offset']
     
     # Create export folders
-    rec_root = os.path.join(out_dir_root, ctx.recording_label)
+    rec_root = os.path.join(out_dir_root, get_target_type(match['notes']), ctx.recording_label)
     os.makedirs(rec_root, exist_ok=False)
     
     rec_aris_raw = os.path.join(rec_root, 'aris_raw')
