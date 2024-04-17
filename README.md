@@ -210,5 +210,27 @@ pip install rosbag
 
 
 
+# Camera Calibrations
+
+## GoPro Hero 8 (recordings)
+```python
+# Wide mode -> fisheye calibration
+camera_matrix = np.array([[397.77105952, 0.0, 323.01645778],
+                          [0.0, 393.9965825, 181.94773453],
+                          [0.0, 0.0, 1.0]])
+distortion = np.array([[0.22602159], [0.34004099],
+                       [-0.39509882], [0.66812696]])
+```
+
+## Canon EOS 80D (photogrammetry)
+```python
+camera_matrix = np.array ([[604.90542407, 0.0, 289.34879658]
+                           [0.0, 495.82900424, 241.46109218]
+                           [0.0, 0.0, 1.0]])
+distortion = np.array([[-0.32364768, 0.51904464, -0.01417983, -0.00342211, -0.53602811]])
+```
+
+
+
 # Lessons Learned
 Unfortunately, this dataset was recorded with an ad-hoc setup, resulting in several difficulties down the line. In particular, having an independent recording setup for every sensor caused some major trouble and headaches down the line so that almost any amount of additional integration effort would have been warranted. Furthermore, the GoPro proved to be a suboptimal choice, as it was not possible to easily monitor it from outside the basin, resulting in several lost clips due to low battery and random recording stops. 
