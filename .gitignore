@@ -3,9 +3,6 @@ data_raw
 data_processed
 data_export
 photos
-oceans_abstract/oceans_abstract.aux
-oceans_abstract/oceans_abstract.log
-oceans_abstract/oceans_abstract.pdf
 __pycache__
 *.pyc
 *.7z
