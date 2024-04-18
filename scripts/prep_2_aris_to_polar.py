@@ -118,9 +118,10 @@ def aris_frame_to_polar(
     # In ARIS frames, beams are ordered right to left
     # return cv2.flip(polar_frame, 1)
 
-#yet another method to create polar images.
-#In contrast to aris_frame_to_polar this method creates an image based on a given resolution. As a results a pixel in the original data corresponds to a polygon area in this image.
-def aris_frame_to_polar2(frame, frame_idx, metadata,frame_res = 1000):
+def aris_frame_to_polar2(frame, frame_idx, metadata, frame_res = 1000):
+    # Yet another method to create polar images.
+    # In contrast to aris_frame_to_polar this method creates an image based on a given resolution. 
+    # As a result, a pixel in the original data corresponds to a polygon area in this image.
     frame_meta = metadata.iloc[frame_idx]
     pingmode = frame_meta['PingMode']
     bin_count = int(frame_meta['SamplesPerBeam'])
@@ -146,14 +147,14 @@ def aris_frame_to_polar2(frame, frame_idx, metadata,frame_res = 1000):
     beam_range = beam_angles[-1][2] - beam_angles[0][1]
     frame_half_w = range_end * np.tan(np.deg2rad(beam_range / 2))
     
-    0 #pixel/m
+    #pixel/m
     frame_l_n = int(np.ceil(range_end * frame_res))
     frame_w_n = int(np.ceil(frame_half_w * 2 * frame_res))
     
     polar_frame = np.zeros((frame_l_n, frame_w_n), dtype=np.uint8)
     
     #subpixel precision
-    center_img_ref_frame = np.array([frame_w_n/2,frame_l_n])
+    center_img_ref_frame = np.array([frame_w_n/2, frame_l_n])
     for beam_idx in range(beam_count):
         start_angle = -beam_angles[beam_idx][1]
         center_angle = -beam_angles[beam_idx][0]
@@ -251,6 +252,11 @@ if __name__ == "__main__":
     methods = config.get("aris_to_polar_method", "polar2+csv").split('+')
     png_compression_level = config.get("aris_to_polar_png_compression", 9)
 
+    polar1_norm_intensity = config.get("aris_to_polar_polar1_norm_intensity", False)
+    polar1_antialiasing = config.get("aris_to_polar_polar1_antialiasing", False)
+    polar1_scale = config.get("aris_to_polar_polar1_scale", 2.0)
+    polar2_resolution = config.get("aris_to_polar_polar2_resolution", 500)
+
     both_polars = "polar" in methods and "polar2" in methods
     recordings = sorted([x for x in os.listdir(input_path)])
 
@@ -293,14 +299,26 @@ if __name__ == "__main__":
                 # Run the conversions
                 for conversion in methods:
                     if conversion == "polar1":
-                        polar_img = aris_frame_to_polar(frame, frame_idx, metadata)
+                        polar_img = aris_frame_to_polar(
+                            frame, 
+                            frame_idx, 
+                            metadata,
+                            polar1_norm_intensity,
+                            polar1_antialiasing,
+                            polar1_scale,
+                        )
                         cv2.imwrite(
                             frame_out_path + '.png', 
                             polar_img, 
                             [cv2.IMWRITE_PNG_COMPRESSION, png_compression_level]
                         )
                     elif conversion == "polar2":
-                        polar_img = aris_frame_to_polar2(frame, frame_idx, metadata)
+                        polar_img = aris_frame_to_polar2(
+                            frame, 
+                            frame_idx, 
+                            metadata,
+                            polar2_resolution,
+                        )
                         cv2.imwrite(
                             polar2_out_path + '.png', 
                             polar_img, 
