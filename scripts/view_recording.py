@@ -197,8 +197,8 @@ class DatasetViewer(QtWidgets.QMainWindow):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('recording_dir')
-    parser.add_argument('-p', '--aris-polar', action=argparse.BooleanOptionalAction, default=True)
-    parser.add_argument('-c', '--aris-colorize', action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument('-p', '--polar', action=argparse.BooleanOptionalAction, default=True)
+    parser.add_argument('-c', '--colorize', action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument('-l', '--use-lru-cache', action=argparse.BooleanOptionalAction, default=False)
 
     args = parser.parse_args()
