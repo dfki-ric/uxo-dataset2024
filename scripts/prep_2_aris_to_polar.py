@@ -250,6 +250,7 @@ if __name__ == "__main__":
 
     input_path = config["aris_extract"]
     methods = config.get("aris_to_polar_method", "polar2+csv").split('+')
+    image_format = config.get("aris_to_polar_image_format", "pgm")
     png_compression_level = config.get("aris_to_polar_png_compression", 9)
 
     polar1_norm_intensity = config.get("aris_to_polar_polar1_norm_intensity", False)
@@ -308,7 +309,7 @@ if __name__ == "__main__":
                             polar1_scale,
                         )
                         cv2.imwrite(
-                            frame_out_path + '.png', 
+                            frame_out_path + '.' + image_format, 
                             polar_img, 
                             [cv2.IMWRITE_PNG_COMPRESSION, png_compression_level]
                         )
@@ -320,7 +321,7 @@ if __name__ == "__main__":
                             polar2_resolution,
                         )
                         cv2.imwrite(
-                            polar2_out_path + '.png', 
+                            polar2_out_path + '.' + image_format, 
                             polar_img, 
                             [cv2.IMWRITE_PNG_COMPRESSION, png_compression_level]
                         )
