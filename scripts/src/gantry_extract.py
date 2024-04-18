@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-import sys
 import os
-import argparse
 import csv
 import rosbag
 from tqdm import tqdm
+
+from common import get_config
 
 
 def stamp_to_microseconds(stamp):
@@ -34,16 +34,15 @@ def extract_bag(bag_file, out_dir_path, time_adjust=0.):
 
     
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Extracts gantry crane trajectory from a rosbag.' 
-                                     'NOTE that the gantry crane backend uses local timestamps, '
-                                     'which can be fixed by using the -z argument.')
-    parser.add_argument('bag_file', type=str)
-    parser.add_argument('out_dir_path', type=str)
-    
-    # The gantry crane backend uses localtime for timestamps :/
-    parser.add_argument('-z', '--time_adjust', type=float, default='+2', help='adjust timestamps by that many hours (+/-)')
-    args = parser.parse_args(sys.argv[1:])
-    
-    os.makedirs(args.out_dir_path, exist_ok=True)
-    bag_file = args.bag_file
-    extract_bag(bag_file, args.out_dir_path, args.time_adjust)
+    config = get_config()
+
+    input_path = config["gantry_input"]
+    output_path = config["gantry_output"]
+    time_adjust = str(config.get("gantry_time_adjust", "0"))
+
+    os.makedirs(output_path, exist_ok=True)
+    bag_files = sorted([x for x in os.listdir(input_path) if x.endswith(".bag")])
+
+    for bag in tqdm(bag_files):
+        bag_path = os.path.join(input_path, bag)
+        extract_bag(bag_path, output_path, time_adjust)

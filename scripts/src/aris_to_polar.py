@@ -6,16 +6,13 @@ import pandas as pd
 import cv2
 from tqdm import tqdm
 
+from common import get_config
 from .aris_definitions import (
     get_beamcount_from_pingmode,
     BeamWidthsAris3000_64,
     BeamWidthsAris3000_128,
     FrameHeaderFields,
 )
-
-
-def usage():
-    print(f"{sys.argv[0]} <input-folder> <output-folder> [frame-metadata-csv]")
 
 
 def paint_pixel_antialiased(image: np.ndarray, x: float, y: float, value: int):
@@ -209,18 +206,17 @@ def aris_frame_to_polar_csv(frame, frame_idx, metadata):
     speed_of_sound = frame_meta['SoundSpeed']
     sample_start_delay = frame_meta['SampleStartDelay']
     sample_period = frame_meta['SamplePeriod']
-    
     window_start = sample_start_delay * 1e-6 * speed_of_sound / 2
-    window_length = sample_period * (bin_count+1) * 1e-6 * speed_of_sound / 2
-    range_start = window_start
-    range_end = window_start + window_length
-    bin_length = sample_period * 1e-6 * speed_of_sound / 2
     
-    beam_range = beam_angles[-1][2] - beam_angles[0][1]
-    
-    df = pd.DataFrame(columns=['beam_idx','sample_idx','sample_start (m)','sample_end (m)','center_angle (deg)','left_angle(deg)','right_angle(deg)','intensity (dB)'])
-
-    #subpixel precision
+    df = pd.DataFrame(columns=['beam_idx',
+        'sample_idx',
+        'sample_start (m)',
+        'sample_end (m)',
+        'center_angle (deg)',
+        'left_angle(deg)',
+        'right_angle(deg)',
+        'intensity (dB)'
+    ])
 
     for beam_idx in range(beam_count):
         start_angle = beam_angles[beam_idx][1]
@@ -231,63 +227,84 @@ def aris_frame_to_polar_csv(frame, frame_idx, metadata):
             intensity = frame[bin_idx, beam_idx]
             bin_start = window_start + sample_period * bin_idx * 1e-6 * speed_of_sound  / 2
             bin_end = window_start + sample_period * (bin_idx+1) * 1e-6 * speed_of_sound  / 2
-            new_row = {'beam_idx' : beam_idx, 'sample_idx' : bin_idx, 'sample_start (m)' : bin_start, 'sample_end (m)' : bin_end, 'center_angle (deg)' : center_angle, 'left_angle(deg)' : start_angle, 'right_angle(deg)': end_angle,'intensity (dB)' : (float(intensity)*80.0/255.0) }
+            
+            new_row = {
+                'beam_idx' : beam_idx,
+                'sample_idx' : bin_idx,
+                'sample_start (m)' : bin_start,
+                'sample_end (m)' : bin_end,
+                'center_angle (deg)' : center_angle,
+                'left_angle(deg)' : start_angle,
+                'right_angle(deg)': end_angle,
+                'intensity (dB)' : float(intensity) * 80.0/255.0
+            }
+
             df=df.append(new_row,ignore_index=True)
-        
-    # In ARIS frames, beams are ordered right to left
+    
     return df
 
-def main(in_dir_path, out_dir_path, frames_meta_file=0):
-
-    if in_dir_path.endswith("/"):
-        in_dir_path = in_dir_path[:-1]
-    basename = os.path.basename(in_dir_path)
-    print(in_dir_path)
-    if frames_meta_file==0:
-        frames_meta_file = os.path.join(in_dir_path, f"{basename}_frames.csv")
-    
-    os.makedirs(out_dir_path, exist_ok=True)
-
-    with open(frames_meta_file, "r") as frames_meta_file:
-        metadata = pd.read_csv(frames_meta_file)
-
-        for f in tqdm(sorted(os.listdir(in_dir_path))):
-            if not f.lower().endswith(".pgm"):
-                continue
-
-            frame_name = f
-            if "_" in frame_name:
-                # Assume the actual frame identifier comes after an underscore (if present)
-                frame_name = f[f.index("_") + 1 :]
-
-            frame_idx = int(os.path.splitext(frame_name)[0])
-            frame = cv2.imread(os.path.join(in_dir_path, f), cv2.IMREAD_UNCHANGED)
-            polar = aris_frame_to_polar2(frame, frame_idx, metadata)
-            
-            outfile_name = os.path.splitext(os.path.basename(f))[0]
-            png_compression_level = 9
-
-            cv2.imwrite(
-                os.path.join(out_dir_path, outfile_name + ".png"),
-                polar,
-                [cv2.IMWRITE_PNG_COMPRESSION, png_compression_level],
-            )
 
 if __name__ == "__main__":
-    if not 3 <= len(sys.argv) < 4:
-        usage()
-        raise RuntimeError("Wrong number of arguments")
+    config = get_config()
 
-    in_dir_path = sys.argv[1]
-    out_dir_path = sys.argv[2]
+    input_path = config["aris_extract"]
+    methods = config.get("aris_to_polar_method", "polar2+csv").split('+')
+    png_compression_level = config.get("aris_to_polar_png_compression", 9)
 
-    if in_dir_path.endswith("/"):
-        in_dir_path = in_dir_path[:-1]
-    basename = os.path.basename(in_dir_path)
+    both_polars = "polar" in methods and "polar2" in methods
+    recordings = sorted([x for x in os.listdir(input_path) if os.path.isdir(x)])
 
-    if len(sys.argv) >= 3:
-        frames_meta_file = sys.argv[3]
-    else:
-        frames_meta_file = os.path.join(in_dir_path, f"{basename}_frames.csv")
+    for rec_name in tqdm(recordings):
+        if rec_name.endswith("/"):
+            rec_name = rec_name[:-1]
+        
+        recording_path = os.path.join(input_path, rec_name)
+        frames_meta_file = os.path.join(recording_path, f"{rec_name}_frames.csv")
+        out_path = os.path.join(recording_path, "polar")
+        os.makedirs(out_path, exist_ok=True)
 
-    main(in_dir_path, out_dir_path, frame_meta_file)
+        with open(frames_meta_file, "r") as frames_meta_file:
+            metadata = pd.read_csv(frames_meta_file)
+
+            for f in tqdm(sorted(os.listdir(recording_path))):
+                if not f.lower().endswith(".pgm"):
+                    continue
+
+                frame_name = f
+                if "_" in frame_name:
+                    # Assume the actual frame identifier comes after an underscore (if present)
+                    frame_name = f[f.index("_") + 1 :]
+
+                frame_idx = int(os.path.splitext(frame_name)[0])
+                frame = cv2.imread(os.path.join(recording_path, f), cv2.IMREAD_UNCHANGED)
+                polar = aris_frame_to_polar(frame, frame_idx, metadata)
+                
+                basename = os.path.splitext(os.path.basename(f))[0]
+                frame_out_path = os.path.join(out_path, basename)
+                
+                if both_polars:
+                    polar2_out_path = os.path.join(out_path + '2', basename)
+                else:
+                    polar2_out_path = frame_out_path
+
+                # Run the conversions
+                for conversion in methods:
+                    if conversion == "polar1":
+                        polar_img = aris_frame_to_polar(frame, frame_idx, metadata)
+                        cv2.imwrite(
+                            frame_out_path + '.png', 
+                            polar_img, 
+                            [cv2.IMWRITE_PNG_COMPRESSION, png_compression_level]
+                        )
+                    elif conversion == "polar2":
+                        polar_img = aris_frame_to_polar2(frame, frame_idx, metadata)
+                        cv2.imwrite(
+                            polar2_out_path + '.png', 
+                            polar_img, 
+                            [cv2.IMWRITE_PNG_COMPRESSION, png_compression_level]
+                        )
+                    elif conversion == "csv":
+                        polar_df = aris_frame_to_polar_csv(frame, frame_idx, metadata)
+                        polar_df.to_csv(frame_out_path + '.csv', header=True, index=False)
+                    else:
+                        raise ValueError(f"Invalid method {conversion}")

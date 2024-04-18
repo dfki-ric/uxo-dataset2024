@@ -1,13 +1,10 @@
 #!/usr/bin/env python
-import sys
 import os
 import csv
 import pandas as pd
 from tqdm import tqdm
 
-
-def usage():
-    print(f'{sys.argv[0]} <gantry_extraction_folder>')
+from common import get_config
 
 
 def find_motion_onset(csv_file):
@@ -27,18 +24,16 @@ def find_motion_onset(csv_file):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 2:
-        usage()
-        raise RuntimeError('Wrong number of arguments')
+    config = get_config()
     
-    csv_dir_path = sys.argv[1]
-    out_file_path = os.path.join(csv_dir_path, 'gantry_metadata.csv')
-    
-    with open(out_file_path, 'w') as out_file:
+    input_path = config["gantry_extract"]
+    metadata_file = os.path.join(input_path, "gantry_metadata.csv")
+
+    with open(metadata_file, 'w') as out_file:
         writer = csv.writer(out_file)
         writer.writerow(['file', 'start_us', 'end_us', 'onset_us'])
         
-        for csv_file in tqdm(sorted(os.listdir(csv_dir_path))):
+        for csv_file in tqdm(sorted(os.listdir(input_path))):
             if not csv_file.lower().endswith('.csv'):
                 continue
             
@@ -46,6 +41,6 @@ if __name__ == '__main__':
                 continue
             
             print(f'{csv_file} ... ', end='')
-            start, end, onset = find_motion_onset(os.path.join(csv_dir_path, csv_file))
+            start, end, onset = find_motion_onset(os.path.join(input_path, csv_file))
             print((onset - start) / 1e6)
             writer.writerow([csv_file, start, end, onset])

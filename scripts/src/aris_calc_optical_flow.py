@@ -3,8 +3,9 @@ import sys
 import os
 import cv2
 import pandas as pd
-import argparse
+from tqdm import tqdm, trange
 
+from common import get_config
 from optical_flow import calc_optical_flow_lk, calc_optical_flow_farnerback
 
 
@@ -33,46 +34,54 @@ feature_params_lk = dict(
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('aris_data_dir')
-    parser.add_argument('-m', '--method', choices=['lk', 'farnerback'], default='lk')
-    parser.add_argument('-r', '--recalc', action=argparse.BooleanOptionalAction, default=True)
-    args = parser.parse_args()
-    
-    if args.aris_data_dir.endswith('/'):
-        args.aris_data_dir = args.aris_data_dir[:-1]
+    config = get_config()
+
+    input_path = config["aris_extract"]
+    method = config.get("aris_optical_flow_method", "lk")
+    recalc = config.get("aris_optical_flow_recalc", True)
+
+    recordings = sorted([x for x in os.listdir(input_path) if os.path.isdir(x)])
+
+    for rec_name in tqdm(recordings):
+        aris_data_dir = os.path.join(input_path, rec_name)
         
-    out_file = os.path.join(args.aris_data_dir, os.path.split(args.aris_data_dir)[-1] + '_flow.csv')
-    if not args.recalc and os.path.isfile(out_file):
-        print(f'{out_file} already exists, skipping')
-        sys.exit(0)
-    
-    frames_path = os.path.join(args.aris_data_dir, 'polar')
-    if not os.path.isdir(frames_path):
-        print(f'{args.aris_data_dir} does not contain polar frames, using raw frames instead')
-        frames_path = args.aris_data_dir
-    aris_frames = sorted(os.path.join(frames_path, f) for f in os.listdir(frames_path) if f.lower().endswith('.pgm'))
-    
-    class ImageFileIterator:
-        def __init__(self, image_files) -> None:
-            self._image_files = image_files
+        if aris_data_dir.endswith('/'):
+            aris_data_dir = aris_data_dir[:-1]
+            
+        out_file = os.path.join(aris_data_dir, os.path.split(aris_data_dir)[-1] + '_flow.csv')
+        if not recalc and os.path.isfile(out_file):
+            print(f'{out_file} already exists, skipping')
+            sys.exit(0)
         
-        def __iter__(self):
-            for idx in range(len(self._image_files)):
-                yield cv2.imread(self._image_files[idx], cv2.IMREAD_UNCHANGED)
-                
-        def __len__(self):
-            return len(self._image_files)
-    
-    iter = ImageFileIterator(aris_frames)
-    
-    if args.method == 'lk':
-        flow = calc_optical_flow_lk(iter, args.method, flow_params_lk, feature_params_lk)
-    elif args.method == 'farnerback':
-        flow = calc_optical_flow_farnerback(iter, args.method, flow_params_farneback)
-    else:
-        raise ValueError('Invalid method')
-    
-    
-    pd.DataFrame(flow).to_csv(out_file, header=None, index=None)
-    #print(flow.shape)
+        frames_path = os.path.join(aris_data_dir, 'polar')
+        if not os.path.isdir(frames_path):
+            print(f'{aris_data_dir} does not contain polar frames, using raw frames instead')
+            frames_path = aris_data_dir
+        aris_frames = sorted(
+            os.path.join(frames_path, f) 
+            for f in os.listdir(frames_path) 
+            if f.lower().endswith('.pgm')
+        )
+        
+        class ImageFileIterator:
+            def __init__(self, image_files) -> None:
+                self._image_files = image_files
+            
+            def __iter__(self):
+                for idx in trange(len(self._image_files)):
+                    yield cv2.imread(self._image_files[idx], cv2.IMREAD_UNCHANGED)
+                    
+            def __len__(self):
+                return len(self._image_files)
+        
+        iter = ImageFileIterator(aris_frames)
+        
+        if method == 'lk':
+            flow = calc_optical_flow_lk(iter, method, flow_params_lk, feature_params_lk)
+        elif method == 'farnerback':
+            flow = calc_optical_flow_farnerback(iter, method, flow_params_farneback)
+        else:
+            raise ValueError('Invalid method')
+        
+        pd.DataFrame(flow).to_csv(out_file, header=None, index=None)
+        #print(flow.shape)

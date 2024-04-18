@@ -5,9 +5,7 @@ import yaml
 import numpy as np
 import cv2
 
-
-def usage():
-    print(f'{sys.argv[0]} <extracted-aris-folder>')
+from common import get_config
 
 
 def save_marks(aris_dir, onset, marks):
@@ -118,7 +116,8 @@ def view_images(aris_dir):
     
 
 if __name__ == '__main__':
-    in_dir_path = sys.argv[1]
+    config = get_config()
+    in_dir_path = config["aris_extract"]
     
     for aris_dir in sorted(os.listdir(in_dir_path)):
         view_images(os.path.join(in_dir_path, aris_dir))
