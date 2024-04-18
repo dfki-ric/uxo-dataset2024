@@ -13,7 +13,7 @@ fi
 
 archive="$(dirname $1)/$(basename $1)"
 
-# Archive everything but the polar transformed images
+# Archive everything, excluding polar transformed images
 7z a -mx=5 -r "${archive}.7z" $1 -xr'!*/aris_polar/*'
 
 # Archive only the polar transformed images

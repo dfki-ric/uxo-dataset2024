@@ -11,9 +11,11 @@ from dataclasses import dataclass, asdict
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PyQt5 import QtCore, QtGui, QtWidgets
-from qrangeslider import QRangeSlider
-from q_custom_widgets import MainWidget, MySlider
-from matching_context import MatchingContext, get_aris_metadata, get_gantry_metadata, get_gopro_metadata, folder_basename
+
+from common.config import get_config
+from common.qrangeslider import QRangeSlider
+from common.q_custom_widgets import MainWidget, MySlider
+from common.matching_context import MatchingContext, get_aris_metadata, get_gantry_metadata, get_gopro_metadata, folder_basename
 
 
 class QtMatchingContext(MatchingContext):
@@ -161,7 +163,7 @@ class Association:
 
 
 class MainWindow(QtWidgets.QMainWindow):
-    def __init__(self, aris_base_dir, gopro_base_dir, gantry_base_dir, autoplay=False):
+    def __init__(self, aris_base_dir, gopro_base_dir, gantry_base_dir, match_file, autoplay=False):
         super().__init__()
         
         self.aris_associated = set()
@@ -169,12 +171,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self.gantry_associated = set()
         self.association_details = {}
         
-        self.out_file_path = None
-        
         # Keep track of the files we're using
         self.aris_base_dir = aris_base_dir
         self.gopro_base_dir = gopro_base_dir
         self.gantry_base_dir = gantry_base_dir
+        self.match_file = match_file
         
         self.aris_data_dirs = sorted(os.path.join(aris_base_dir, f) for f in os.listdir(aris_base_dir))
         self.gopro_files = sorted([os.path.join(gopro_base_dir, f) for f in os.listdir(gopro_base_dir) if f.lower().endswith('.mp4')], key=gopro_sorting_key)
@@ -657,21 +658,11 @@ class MainWindow(QtWidgets.QMainWindow):
             return
 
     def update_save_file(self):
-        if not self.out_file_path:
-            self.playing = False
-            
-            out_file_path, _ = QtWidgets.QFileDialog.getSaveFileName(self, 'Save Associations', '', 'Csv Files(*.csv)')
-            if self.out_file_path:
-                return
-            if not out_file_path.lower().endswith('.csv'):
-                out_file_path += '.csv'
-            self.out_file_path = out_file_path
-            
         header = list(Association.__dataclass_fields__.keys())
         header.extend(['aris_file', 'gopro_file', 'gantry_file'])
         header = sorted(header)
         
-        with open(self.out_file_path, 'w') as out_file:
+        with open(self.match_file, 'w') as out_file:
             writer = csv.DictWriter(out_file, header)
             writer.writeheader()
             for association in self.association_details.values():
@@ -819,22 +810,13 @@ class MainWindow(QtWidgets.QMainWindow):
 
 
 if __name__ == '__main__':
-    import argparse
-    
-    parser = argparse.ArgumentParser()
-    group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('--day', choices=['1', '2'], help="Load datasets from 'data/[aris|gopro|gantry]/day<X>/")
-    group.add_argument('--dirs', nargs=3, metavar=('ARIS_DIR', 'GOPRO_DIR', 'GANTRY_DIR'), help="Load datasets from the provided directories")
-    group.add_argument('--data-root', default='')
-    args = parser.parse_args()
-    
-    if args.day in ['1', '2']:
-        aris_dir_path = os.path.join(args.data_root, f'data/aris/day{args.day}/')
-        gopro_dir_path = os.path.join(args.data_root, f'data/gopro/day{args.day}/clips_sd/')
-        gantry_dir_path = os.path.join(args.data_root, f'data/gantry/day{args.day}/')
-    else:
-        aris_dir_path, gopro_dir_path, gantry_dir_path = args.dirs
-    
+    config = get_config()
+
+    aris_dir_path = config["aris_extract"]
+    gopro_dir_path = config["gopro_clips"]
+    gantry_dir_path = config["gantry_extract"]
+    match_file = config["match_file"]
+
     app = QtWidgets.QApplication(sys.argv)
-    main = MainWindow(aris_dir_path, gopro_dir_path, gantry_dir_path)
+    main = MainWindow(aris_dir_path, gopro_dir_path, gantry_dir_path, match_file)
     sys.exit(app.exec_())

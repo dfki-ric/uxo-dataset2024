@@ -6,7 +6,7 @@ import pandas as pd
 import cv2
 from tqdm import tqdm
 
-from common import get_config
+from dataset.scripts.src.config import get_config
 from .aris_definitions import (
     get_beamcount_from_pingmode,
     BeamWidthsAris3000_64,

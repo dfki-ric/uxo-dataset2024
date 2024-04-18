@@ -4,7 +4,7 @@ import csv
 import rosbag
 from tqdm import tqdm
 
-from common import get_config
+from common.config import get_config
 
 
 def stamp_to_microseconds(stamp):

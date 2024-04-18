@@ -5,7 +5,7 @@ import yaml
 import numpy as np
 import cv2
 
-from common import get_config
+from common.config import get_config
 
 
 def save_marks(aris_dir, onset, marks):

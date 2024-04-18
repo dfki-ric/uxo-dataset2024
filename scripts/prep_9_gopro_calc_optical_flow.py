@@ -5,8 +5,8 @@ import cv2
 import pandas as pd
 from tqdm import tqdm, trange
 
-from common import get_config
-from optical_flow import calc_optical_flow_lk, calc_optical_flow_farnerback
+from common.config import get_config
+from common.optical_flow import calc_optical_flow_lk, calc_optical_flow_farnerback
 
 
 flow_params_farneback = dict(

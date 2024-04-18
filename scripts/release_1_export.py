@@ -1,7 +1,5 @@
 #/usr/bin/env python3
-
 import os
-import argparse
 import re
 import shutil
 import yaml
@@ -9,8 +7,9 @@ import pandas as pd
 import cv2
 from tqdm import tqdm
 
-from aris_definitions import FrameHeaderFields
-from matching_context import MatchingContext, folder_basename
+from common.config import get_config
+from common.aris_definitions import FrameHeaderFields
+from common.matching_context import MatchingContext, folder_basename
 
 
 def get_target_type(notes: str) -> str:
@@ -98,26 +97,20 @@ def export_recording(match: pd.Series, data_root: str, out_dir_root: str, gopro_
         
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('match_file')
-    parser.add_argument('export_dir')
-    parser.add_argument('-d', '--data-root', default='')
-    parser.add_argument('-r', '--gopro-resolution', default='fhd')
-    parser.add_argument('-f', '--gopro-format', default='jpg')
-    parser.add_argument('-t', '--trim-from-gopro', action=argparse.BooleanOptionalAction, default=True)
-    
-    args = parser.parse_args()
-    match_file_path = args.match_file
-    export_dir = args.export_dir
-    data_root = args.data_root if args.data_root else os.path.dirname(match_file_path)
-    gopro_resolution = args.gopro_resolution
-    gopro_format = args.gopro_format
-    trim_from_gopro = args.trim_from_gopro
+    config = get_config()
+
+    match_file = config["match_file"]
+    export_dir = config["export_dir"]
+    gopro_resolution = config.get("export_gopro_resolution", "fhd")
+    gopro_format = config.get("export_gopro_format", "jpg")
+    trim_from_gopro = config.get("export_only_with_gopro", True)
+
+    data_root = os.path.dirname(match_file)
     
     # Copy recording data
     print(f'Exporting recordings to {export_dir}')
     os.makedirs(export_dir, exist_ok=True)
-    matches = pd.read_csv(match_file_path, converters={
+    matches = pd.read_csv(match_file, converters={
         'aris_file': str,
         'gantry_file': str,
         'gopro_file': str,

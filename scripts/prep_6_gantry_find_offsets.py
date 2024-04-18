@@ -4,7 +4,7 @@ import csv
 import pandas as pd
 from tqdm import tqdm
 
-from common import get_config
+from common.config import get_config
 
 
 def find_motion_onset(csv_file):

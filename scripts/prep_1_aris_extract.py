@@ -9,9 +9,13 @@ import numpy as np
 import cv2
 from tqdm import tqdm
 
-from common import get_config
-import aris_definitions as aris_definitions
-from aris_definitions import get_beamcount_from_pingmode, FileHeaderFields as ArisFile, FrameHeaderFields as ArisFrame
+from common.config import get_config
+import common.aris_definitions as aris_definitions
+from common.aris_definitions import (
+    get_beamcount_from_pingmode, 
+    FileHeaderFields as ArisFile, 
+    FrameHeaderFields as ArisFrame
+)
 
 
 class _Struct:
