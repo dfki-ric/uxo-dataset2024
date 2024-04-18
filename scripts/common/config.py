@@ -1,7 +1,8 @@
 import os.path as path
 from collections import Mapping
 import sys
-import json
+import yaml
+from typing import Iterator
 
 
 __sentinel__ = object()
@@ -28,6 +29,9 @@ class _FallbackArgs(Mapping):
         self._idx += 1
         return ret
     
+    def __iter__(self) -> Iterator:
+        return iter(zip(range(len(self.args)), self.args))
+    
     def __len__(self) -> int:
         return len(self.args)
     
@@ -39,13 +43,14 @@ def get_config() -> dict:
     if len(sys.argv) > 1:
         config_path = sys.argv[1]
     else:
-        config_path = path.join(path.dirname(path.realpath(__file__)), '..',  'config.json')
+        config_path = path.join(path.dirname(path.realpath(__file__)), '..',  'config.yaml')
 
-    if not path.isfile(config_path):
+    if not path.isfile(config_path) and len(sys.argv) > 1:
         # This way the user should still be able to call scripts and pass any arguments as 
         # positional parameters
+        print(f"Config '{config_path}' not found, trying fallback method")
         return _FallbackArgs()
 
     with open(config_path, 'r') as config:
-        return json.loads(config.read())
+        return yaml.safe_load(config)
     
