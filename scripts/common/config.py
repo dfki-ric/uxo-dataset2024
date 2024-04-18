@@ -1,6 +1,10 @@
-import os.path as path
-from collections import Mapping
+try:
+    from collections import Mapping
+except ImportError:
+    from collections.abc import Mapping
+
 import sys
+import os.path as path
 import yaml
 from typing import Iterator
 

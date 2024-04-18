@@ -40,14 +40,16 @@ if __name__ == '__main__':
     method = config.get("aris_optical_flow_method", "lk")
     recalc = config.get("aris_optical_flow_recalc", True)
 
-    recordings = sorted([x for x in os.listdir(input_path) if os.path.isdir(x)])
+    recordings = sorted([x for x in os.listdir(input_path)])
 
     for rec_name in tqdm(recordings):
-        aris_data_dir = os.path.join(input_path, rec_name)
-        
-        if aris_data_dir.endswith('/'):
-            aris_data_dir = aris_data_dir[:-1]
+        if rec_name.endswith('/'):
+            rec_name = rec_name[:-1]
             
+        aris_data_dir = os.path.join(input_path, rec_name)
+        if not os.path.isdir(aris_data_dir):
+            continue
+        
         out_file = os.path.join(aris_data_dir, os.path.split(aris_data_dir)[-1] + '_flow.csv')
         if not recalc and os.path.isfile(out_file):
             print(f'{out_file} already exists, skipping')

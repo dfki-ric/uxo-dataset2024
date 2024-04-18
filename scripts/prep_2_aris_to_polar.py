@@ -208,16 +208,7 @@ def aris_frame_to_polar_csv(frame, frame_idx, metadata):
     sample_period = frame_meta['SamplePeriod']
     window_start = sample_start_delay * 1e-6 * speed_of_sound / 2
     
-    df = pd.DataFrame(columns=['beam_idx',
-        'sample_idx',
-        'sample_start (m)',
-        'sample_end (m)',
-        'center_angle (deg)',
-        'left_angle(deg)',
-        'right_angle(deg)',
-        'intensity (dB)'
-    ])
-
+    rows = []
     for beam_idx in range(beam_count):
         start_angle = beam_angles[beam_idx][1]
         center_angle = beam_angles[beam_idx][0]
@@ -228,19 +219,28 @@ def aris_frame_to_polar_csv(frame, frame_idx, metadata):
             bin_start = window_start + sample_period * bin_idx * 1e-6 * speed_of_sound  / 2
             bin_end = window_start + sample_period * (bin_idx+1) * 1e-6 * speed_of_sound  / 2
             
-            new_row = {
-                'beam_idx' : beam_idx,
-                'sample_idx' : bin_idx,
-                'sample_start (m)' : bin_start,
-                'sample_end (m)' : bin_end,
-                'center_angle (deg)' : center_angle,
-                'left_angle(deg)' : start_angle,
-                'right_angle(deg)': end_angle,
-                'intensity (dB)' : float(intensity) * 80.0/255.0
-            }
-
-            df=df.append(new_row,ignore_index=True)
+            rows.append([
+                beam_idx,
+                bin_idx,
+                bin_start,
+                bin_end,
+                center_angle,
+                start_angle,
+                end_angle,
+                float(intensity) * 80.0/255.0
+            ])
     
+    df = pd.DataFrame(rows, columns=[
+        'beam_idx',
+        'sample_idx',
+        'sample_start (m)',
+        'sample_end (m)',
+        'center_angle (deg)',
+        'left_angle(deg)',
+        'right_angle(deg)',
+        'intensity (dB)'
+    ])
+
     return df
 
 
@@ -252,13 +252,16 @@ if __name__ == "__main__":
     png_compression_level = config.get("aris_to_polar_png_compression", 9)
 
     both_polars = "polar" in methods and "polar2" in methods
-    recordings = sorted([x for x in os.listdir(input_path) if os.path.isdir(x)])
+    recordings = sorted([x for x in os.listdir(input_path)])
 
     for rec_name in tqdm(recordings):
         if rec_name.endswith("/"):
             rec_name = rec_name[:-1]
         
         recording_path = os.path.join(input_path, rec_name)
+        if not os.path.isdir(recording_path):
+            continue
+
         frames_meta_file = os.path.join(recording_path, f"{rec_name}_frames.csv")
         out_path = os.path.join(recording_path, "polar")
         os.makedirs(out_path, exist_ok=True)

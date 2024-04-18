@@ -45,7 +45,10 @@ if __name__ == '__main__':
     for clip in tqdm(gopro_clips):
         clip_path = os.path.join(input_path, clip)
 
-        out_file = os.path.join(os.path.dirname(clip_path), os.path.splitext(os.path.basename(clip_path))[0] + '_flow.csv')
+        out_file = os.path.join(
+            os.path.dirname(clip_path), 
+            os.path.splitext(os.path.basename(clip_path))[0] + '_flow.csv'
+        )
         if not recalc and os.path.isfile(out_file):
             print(f'{out_file} already exists, skipping')
             sys.exit(0)
