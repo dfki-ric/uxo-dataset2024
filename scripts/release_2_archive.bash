@@ -11,6 +11,8 @@ if [ "$#" -ne 1 ]; then
     exit 1
 fi
 
+trap "exit" INT
+
 archive="$(dirname $1)/$(basename $1)"
 
 # Archive everything, excluding polar transformed images

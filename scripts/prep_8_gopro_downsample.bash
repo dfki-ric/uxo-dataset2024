@@ -21,6 +21,7 @@ OUTDIR=$2
 OPTIONS='-vf scale=640:360 -c:v libx264 -an'
 
 mkdir -p "$OUTDIR"
+trap "exit" INT
 
 for file in "$INDIR"/*.mp4; do
     echo "downsampling $file ..."
