@@ -8,29 +8,38 @@
 # possible to do the downsampling here (see options below), a separate script exists for this as well.
 # 
 # If you're planning to match the data yourself, extending the clips by 3-5s beyond the detected range
-# can be helpful as some PTU motion may have been captured before the crane started moving.For the 
+# can be helpful as some PTU motion may have been captured before the crane started moving. For the 
 # final export we recut the clips to the correct range to make the dataset as tight as possible.
 # 
-# $1: directory containing the footage
-# $2: directory to put the extracted clips in
+# $1: resolution, one of uhd, fhd or sd
+# $2: directory containing the footage
+# $3: directory to put the extracted clips in
 # 
-# example: ./gopro_1_cut.bash ../data_raw/gopro/ ../data_processed/gopro/clips_uhd/
+# example: ./gopro_1_cut.bash uhd ../data_raw/gopro/ ../data_processed/gopro/
 
-if [ "$#" -ne 2 ]; then
-    echo "Usage: $0 <path-to-input-folder> <path-to-output-folder>"
+if [ "$#" -ne 3 ]; then
+    echo "Usage: $0 <resolution> <path-to-input-folder> <path-to-output-folder>"
     exit 1
 fi
 
-INDIR="$1"
-OUTDIR="$2"
-
-# Stream copy
-OPTIONS='-c copy -an'
-
 # Downscaling is more efficient on the cut clips (see next script)
-#OPTIONS='-vf scale=1920:1080 -c:v libx264 -an'
-#OPTIONS='-vf scale=640:360 -c:v libx264 -an'
+case "$1" in
+"uhd")
+    OPTIONS='-c copy -an'
+    ;;
+"fhd")
+    OPTIONS='-vf scale=1920:1080 -c:v libx264 -an'
+    ;;
+"sd")
+    OPTIONS='-vf scale=640:360 -c:v libx264 -an'
+    ;;
+*)
+    echo "resolution '$1' not recognized, must be one of 'uhd', 'fhd', 'sd'"
+    exit 1
+esac
 
+INDIR="$2"
+OUTDIR="$3/clips_$1"
 
 mkdir -p $OUTDIR
 
