@@ -19,6 +19,9 @@ aris_extract: "../data_processed/aris"
 #         each frame is about 12MB large
 aris_to_polar_method: "polar2"  # polar1, polar2, csv, combine with +
 
+# Skip polar transformed frames that already exist.
+aris_to_polar_skip_existing: True
+
 # Image format for the polar-transformed images. pgm or png are recommended.
 aris_to_polar_image_format: png
 

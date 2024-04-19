@@ -246,6 +246,7 @@ if __name__ == "__main__":
 
     input_path = config["aris_extract"]
     methods = config.get("aris_to_polar_method", "polar2+csv").split('+')
+    skip_existing = config.get("aris_to_polar_skip_existing", True)
     image_format = config.get("aris_to_polar_image_format", "pgm")
     png_compression_level = config.get("aris_to_polar_png_compression", 9)
 
@@ -257,72 +258,102 @@ if __name__ == "__main__":
     both_polars = "polar" in methods and "polar2" in methods
     recordings = sorted([x for x in os.listdir(input_path)])
 
-    for rec_name in tqdm(recordings):
-        if rec_name.endswith("/"):
-            rec_name = rec_name[:-1]
-        
+    # Get the total number of frames we have to generate
+    files_total = 0
+    for rec_name in recordings:
         recording_path = os.path.join(input_path, rec_name)
         if not os.path.isdir(recording_path):
             continue
 
         frames_meta_file = os.path.join(recording_path, f"{rec_name}_frames.csv")
-        out_path = os.path.join(recording_path, "polar")
-        os.makedirs(out_path, exist_ok=True)
+        metadata = pd.read_csv(frames_meta_file)
+        files_total += metadata.shape[0]
 
-        with open(frames_meta_file, "r") as frames_meta_file:
-            metadata = pd.read_csv(frames_meta_file)
+        if skip_existing and os.path.isdir(os.path.join(recording_path, 'polar')):
+            files_total -= len(os.listdir(os.path.join(recording_path, 'polar')))
 
-            for f in tqdm(sorted(os.listdir(recording_path))):
-                if not f.lower().endswith(".pgm"):
-                    continue
+    # Do the actual transformation
+    with tqdm(total=files_total) as t:
+        for rec_name in recordings:
+            if rec_name.endswith("/"):
+                rec_name = rec_name[:-1]
+            
+            recording_path = os.path.join(input_path, rec_name)
+            if not os.path.isdir(recording_path):
+                continue
 
-                frame_name = f
-                if "_" in frame_name:
-                    # Assume the actual frame identifier comes after an underscore (if present)
-                    frame_name = f[f.index("_") + 1 :]
+            frames_meta_file = os.path.join(recording_path, f"{rec_name}_frames.csv")
+            out_path = os.path.join(recording_path, "polar")
+            os.makedirs(out_path, exist_ok=True)
 
-                frame_idx = int(os.path.splitext(frame_name)[0])
-                frame = cv2.imread(os.path.join(recording_path, f), cv2.IMREAD_UNCHANGED)
-                polar = aris_frame_to_polar(frame, frame_idx, metadata)
-                
-                basename = os.path.splitext(os.path.basename(f))[0]
-                frame_out_path = os.path.join(out_path, basename)
-                
-                if both_polars:
-                    polar2_out_path = os.path.join(out_path + '2', basename)
-                else:
-                    polar2_out_path = frame_out_path
+            with open(frames_meta_file, "r") as frames_meta_file:
+                metadata = pd.read_csv(frames_meta_file)
 
-                # Run the conversions
-                for conversion in methods:
-                    if conversion == "polar1":
-                        polar_img = aris_frame_to_polar(
-                            frame, 
-                            frame_idx, 
-                            metadata,
-                            polar1_norm_intensity,
-                            polar1_antialiasing,
-                            polar1_scale,
-                        )
-                        cv2.imwrite(
-                            frame_out_path + '.' + image_format, 
-                            polar_img, 
-                            [cv2.IMWRITE_PNG_COMPRESSION, png_compression_level]
-                        )
-                    elif conversion == "polar2":
-                        polar_img = aris_frame_to_polar2(
-                            frame, 
-                            frame_idx, 
-                            metadata,
-                            polar2_resolution,
-                        )
-                        cv2.imwrite(
-                            polar2_out_path + '.' + image_format, 
-                            polar_img, 
-                            [cv2.IMWRITE_PNG_COMPRESSION, png_compression_level]
-                        )
-                    elif conversion == "csv":
-                        polar_df = aris_frame_to_polar_csv(frame, frame_idx, metadata)
-                        polar_df.to_csv(frame_out_path + '.csv', header=True, index=False)
+                for f in sorted(os.listdir(recording_path)):
+                    if not f.lower().endswith(".pgm"):
+                        continue
+
+                    basename = os.path.splitext(os.path.basename(f))[0]
+                    frame_out_path = os.path.join(out_path, basename)
+
+                    # Check if any of the to-be-generated files are missing
+                    if skip_existing:
+                        for m in methods:
+                            if m.startswith("polar") and not os.path.isfile(frame_out_path + '.' + image_format):
+                                break
+
+                            if m == "csv" and not os.path.isfile(frame_out_path + '.csv'):
+                                break
+                        else:
+                            # All files we would generate already exist, skip this frame
+                            continue
+
+                    frame_name = f
+                    if "_" in frame_name:
+                        # Assume the actual frame identifier comes after an underscore (if present)
+                        frame_name = f[f.index("_") + 1 :]
+
+                    frame_idx = int(os.path.splitext(frame_name)[0])
+                    frame = cv2.imread(os.path.join(recording_path, f), cv2.IMREAD_UNCHANGED)
+                    polar = aris_frame_to_polar(frame, frame_idx, metadata)
+                    
+                    if both_polars:
+                        polar2_out_path = os.path.join(out_path + '2', basename)
                     else:
-                        raise ValueError(f"Invalid method {conversion}")
+                        polar2_out_path = frame_out_path
+
+                    # Run the conversions
+                    for conversion in methods:
+                        if conversion == "polar1":
+                            polar_img = aris_frame_to_polar(
+                                frame, 
+                                frame_idx, 
+                                metadata,
+                                polar1_norm_intensity,
+                                polar1_antialiasing,
+                                polar1_scale,
+                            )
+                            cv2.imwrite(
+                                frame_out_path + '.' + image_format, 
+                                polar_img, 
+                                [cv2.IMWRITE_PNG_COMPRESSION, png_compression_level]
+                            )
+                        elif conversion == "polar2":
+                            polar_img = aris_frame_to_polar2(
+                                frame, 
+                                frame_idx, 
+                                metadata,
+                                polar2_resolution,
+                            )
+                            cv2.imwrite(
+                                polar2_out_path + '.' + image_format, 
+                                polar_img, 
+                                [cv2.IMWRITE_PNG_COMPRESSION, png_compression_level]
+                            )
+                        elif conversion == "csv":
+                            polar_df = aris_frame_to_polar_csv(frame, frame_idx, metadata)
+                            polar_df.to_csv(frame_out_path + '.csv', header=True, index=False)
+                        else:
+                            raise ValueError(f"Invalid method {conversion}")
+                
+                    t.update()
