@@ -1,19 +1,12 @@
 #!/usr/bin/bash
 
-# Compress and archive a folder. This script serves both for convenience and documentation purposes.
-# 
-# $1: the folder to archive
-# 
-# example: ./dataset_3_archive.bash ../data_export
+# Split the dataset into several archives, same as the ones officially released.
 
-if [ "$#" -ne 1 ]; then
-    echo "Usage: $0 <folder>"
-    exit 1
-fi
+mydir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
+indir=$(sed -n -e 's/^export_dir://p' $mydir/config.yaml | tr -d '"')
+archive="$(dirname $indir)/$(basename $indir)"
 
 trap "exit" INT
-
-archive="$(dirname $1)/$(basename $1)"
 
 # Archive everything, excluding polar transformed images
 7z a -mx=5 -r "${archive}.7z" $1 -xr'!*/aris_polar/*'

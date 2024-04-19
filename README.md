@@ -174,7 +174,7 @@ The motion onset identified in the ARIS data was used to trim the other sensors 
 
 
 # Processing the raw data
-To prepare the data from the raw recordings, simply execute the accompanying prepocessing and export scripts. Every script contains a short documentation and an example for how it was called to process the data. The called python scripts may have additional command line arguments that are not exposed by the bash scripts.
+To prepare the data from the raw recordings, simply execute the accompanying prepocessing and export scripts. To make things easier, all options are documented in and read from the accompanying `config.yaml` file. 
 
 ## Dependencies
 The underlying scripts are python 3 files and use the following dependencies. Check the scripts to find out who needs what specifically. Since development has moved away from ROS1, we recommend using the excellent [robostack](https://robostack.github.io/) to setup ROS1 environment. Beyond the packages this will install, you should do the following:
@@ -184,29 +184,29 @@ mamba install numpy pandas opencv pyyaml matplotlib ffmpeg pytz pyqt tqdm
 pip install rosbag
 ```
 
-
 ## Scripts
 
 ### Preprocessing
-- *preprocess_aris_1_extract_all.bash*: extracts the frames and metadata from the ARIS' proprietary format.
-- *preprocess_aris_2_to_polar.bash*: (optional) convert the raw frames to polar coordinates. Be aware that while this makes them easier to interpret, some data loss is incurred.
-- *preprocess_aris_3_calc_all_optical_flow.bash*: calculate the optical flow magnitudes for every recording.
-- *preprocess_aris_4_find_offsets.bash*: a graphical tool to manually find and mark the motion onset in every recording.
+- *prep_1_aris_extract.py*: extracts the frames and metadata from the ARIS' proprietary format.
+- *prep_2_aris_to_polar.py*: (optional) convert the raw frames to polar coordinates. Be aware that while this makes them easier to interpret, some data loss is incurred.
+- *prep_3_aris_calc_optical_flow.py*: calculate the optical flow magnitudes for the sonar recordings.
+- *prep_4_aris_find_offsets.py*: a graphical tool to manually find and mark the motion onset in every recording.
 
-- *preprocess_gantry_1_extract.bash*: exports each trajectory's timestamps and xyz position data.
-- *preprocess_gantry_2_find_offsets.bash*: automatically finds the motion onsets (first change in xyz).
+- *prep_5_gantry_extract.py*: exports each trajectory's timestamps and xyz position data.
+- *prep_6_gantry_find_offsets.py*: automatically finds the motion onsets (first change in xyz).
 
-- *preprocess_gopro_1_cut_day1.bash*: cuts the gopro footage from day 1 into individual clips. The cut points were manually extracted from the audio track.
-- *preprocess_gopro_1_cut_day2.bash*: cuts the gopro footage from day 2 into individual clips. The cut points were manually extracted from the audio track.
-- *preprocess_gopro_2_downsample_all.bash*: downsamples the unwieldy 5.3k footage to a more manageable size (check script for details).
-- *preprocess_gopro_3_calc_all_optical_flow.bash*: calculates the optical flow magnitudes for every clip.
+- *prep_7_gopro_cut.bash*: cuts the gopro footage into individual clips. The cut points were manually extracted from the audio track.
+- *prep_8_gopro_downsample.bash*: downsamples the unwieldy 5.3k footage to a more manageable size (check script for details).
+- *prep_9_gopro_calc_optical_flow.py*: calculates the optical flow magnitudes for every clip.
+
+- *prep_x_match_recordings.py*: a GUI that allows synchronized playback of the different recordings and adjust the offsets between them. The result is a csv containing matching recordings and offsets.
 
 ### Dataset assembly
-- *dataset_match_recordings.bash*: a GUI that allows synchronized playback of the different recordings and adjust the offsets between them. The result is a csv containing matching recordings and offsets.
-- *dataset_export.bash*: copies and extracts the processed data into the final dataset.
+- *release_1_export.py*: copies and extracts the processed data into the final dataset.
+- *release_2_archive.bash*: packs the dataset into several archives.
 
 ### Viewing
-- *view_recording.bash*: simple viewer for stepping through an exported recording.
+- *view_recording.py*: simple viewer for synchronously stepping through an exported recording.
 
 
 

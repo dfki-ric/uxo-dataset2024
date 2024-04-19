@@ -9,9 +9,9 @@ import pandas as pd
 import cv2
 from PyQt5 import QtCore, QtGui, QtWidgets
 
-from matching_context import folder_basename
-from aris_definitions import FrameHeaderFields
-from q_custom_widgets import MainWidget, MySlider
+from common.matching_context import folder_basename
+from common.aris_definitions import FrameHeaderFields
+from common.q_custom_widgets import MainWidget, MySlider
 
 
 class DatasetViewer(QtWidgets.QMainWindow):

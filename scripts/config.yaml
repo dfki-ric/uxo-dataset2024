@@ -1,31 +1,106 @@
 # Preprocessing
+###############
+
+# prep_1_aris_extract.py
+# ----------------------
+# Location of the recorded .aris files. All paths are relative to this config file.
 aris_input: "../data_raw/aris"
+
+# Where the extracted frames and metadata from the aris should be stored.
 aris_extract: "../data_processed/aris"
+
+
+# prep_2_aris_to_polar.py
+# -----------------------
+# Method to use for polar-transforming the sonar images. To use multiple methods, use e.g. "polar1+csv".
+#  - polar1: old method, works but needs some improvement
+#  - polar2: new method, recommended
+#  - csv: extract sonar data as csv-files instead (similar to a point cloud). 64bit accuracy, but 
+#         each frame is about 12MB large
 aris_to_polar_method: "polar2"  # polar1, polar2, csv, combine with +
+
+# Image format for the polar-transformed images. pgm or png are recommended.
 aris_to_polar_image_format: png
+
+# Compression level if png format is used.
 aris_to_polar_png_compression: 9
+
+# Only for polar1: normalize intensities for each frame
 aris_to_polar_polar1_norm_intensity: False
+
+# Only for polar1: use antialiasing to blend between bins. Recommended for higher scales.
 aris_to_polar_polar1_antialiasing: True
+
+# Only for polar1: How many pixels each bin receives horizontally and vertically.
 aris_to_polar_polar1_scale: 2.0
+
+# Only for polar2: pixels per meter.
 aris_to_polar_polar2_resolution: 1000
-aris_optical_flow_method: "lk"  # lk, farnerback
-aris_optical_flow_recalc: "True"
 
+
+# prep_3_aris_calc_optical_flow.py
+# --------------------------------
+# Method to use for calculating the optical flow. Optical flow calculation is optional, but helps when 
+# matching motions between camera and sonar later. See opencv documentation for details on methods.
+#  - lk
+#  - farnerback
+aris_optical_flow_method: "lk"
+
+# Calculate optical flow even if a flow file already exists from a previous run.
+aris_optical_flow_recalc: False
+
+
+# prep_5_gantry_extract
+# ---------------------
+# Where the gantry crane rosbags have been stored.
 gantry_input: "../data_raw/gantry"
-gantry_extract: "/data_processed/gantry"
-gantry_time_adjust: "+2"
 
-gopro_clips: "../data_processed/gopro/sd"
-gopro_optical_flow_method: "lk"  # lk, farnerback
+# Where the extracted trajectories should be placed.
+gantry_extract: "/data_processed/gantry"
+
+# Adjustment to timestamps in hours.
+gantry_time_adjust: 2
+
+
+# prep_7_gopro_cut.bash
+# ---------------------
+# Where the gopro footage has been stored.
+gopro_input: "../data_raw/gopro/uhd"
+
+# Where the extracted clips should be placed.
+gopro_extract: "../data_processed/gopro"
+
+# Target resolution of the clips when downsampling. Combine several resolutions as "fhd+sd"
+#  - fhd: full HD (1080p, 1920x1080), convenient for export
+#  - sd: low resolution (640x360), best for previews and matching
+gopro_clip_resolution: "fhd+sd"
+
+# Method to use for optical flow calculation on gopro footage. See documentation above on aris
+# optical flow calculation for details.
+#  - lk
+#  - farnerback
+gopro_optical_flow_method: "lk"
+
+# Calculate optical flow even if a flow file already exists from a previous run.
 gopro_optical_flow_recalc: True
 
 
-# Data matching
+# prep_x_match_recordings.py
+# --------------------------
+# Where to save the identified matches and offsets.
 match_file: "../data_processed/matches.csv"
 
 
-# Export
+# release_1_export.py
+# -------------------
+# Where to save the dataset when exporting.
 export_dir: "../data_export"
+
+# Gopro resolution to include when exporting (only one can be selected).
 export_gopro_resolution: "fhd"
+
+# File format of the exported gopro frames (each frame is exported individually).
 export_gopro_format: "jpg"
+
+# If True, only export the frame range where gopro and sonar footage is overlapping.
 export_only_with_gopro: True

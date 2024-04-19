@@ -813,7 +813,7 @@ if __name__ == '__main__':
     config = get_config()
 
     aris_dir_path = config["aris_extract"]
-    gopro_dir_path = config["gopro_clips"]
+    gopro_dir_path = os.path.join(config["gopro_extract"], "clips_" + config["gopro_clip_resolution"])
     gantry_dir_path = config["gantry_extract"]
     match_file = config["match_file"]
 

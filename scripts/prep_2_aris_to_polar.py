@@ -140,9 +140,7 @@ def aris_frame_to_polar2(frame, frame_idx, metadata, frame_res = 1000):
     
     window_start = sample_start_delay * 1e-6 * speed_of_sound / 2
     window_length = sample_period * (bin_count+1) * 1e-6 * speed_of_sound / 2
-    range_start = window_start
     range_end = window_start + window_length
-    bin_length = sample_period * 1e-6 * speed_of_sound / 2
     
     beam_range = beam_angles[-1][2] - beam_angles[0][1]
     frame_half_w = range_end * np.tan(np.deg2rad(beam_range / 2))
@@ -150,11 +148,9 @@ def aris_frame_to_polar2(frame, frame_idx, metadata, frame_res = 1000):
     #pixel/m
     frame_l_n = int(np.ceil(range_end * frame_res))
     frame_w_n = int(np.ceil(frame_half_w * 2 * frame_res))
-    
     polar_frame = np.zeros((frame_l_n, frame_w_n), dtype=np.uint8)
-    
-    #subpixel precision
     center_img_ref_frame = np.array([frame_w_n/2, frame_l_n])
+    
     for beam_idx in range(beam_count):
         start_angle = -beam_angles[beam_idx][1]
         center_angle = -beam_angles[beam_idx][0]
