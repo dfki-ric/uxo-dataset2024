@@ -202,11 +202,12 @@ if __name__ == '__main__':
     parser.add_argument('-l', '--use-lru-cache', action=argparse.BooleanOptionalAction, default=False)
 
     args = parser.parse_args()
-    recording_dir = args.recording_dir
-    aris_polar = args.aris_polar
-    aris_colorize = args.aris_colorize
-    use_lru_cache = args.use_lru_cache
 
     app = QtWidgets.QApplication(sys.argv)    
-    main = DatasetViewer(args.recording_dir, aris_polar=args.aris_polar, aris_colorize=args.aris_colorize, use_lru_cache=args.use_lru_cache)
+    main = DatasetViewer(
+        args.recording_dir, 
+        aris_polar=args.polar, 
+        aris_colorize=args.colorize, 
+        use_lru_cache=args.use_lru_cache
+    )
     sys.exit(app.exec_())

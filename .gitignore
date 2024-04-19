@@ -3,6 +3,7 @@ data_raw
 data_processed
 data_export
 photos
+tmp
 __pycache__
 *.pyc
 *.7z
