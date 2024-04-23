@@ -5,7 +5,7 @@ import shutil
 import yaml
 import pandas as pd
 import cv2
-from tqdm import tqdm
+from tqdm import tqdm, trange
 
 from common.config import get_config
 from common.aris_definitions import FrameHeaderFields
@@ -20,7 +20,13 @@ def get_target_type(notes: str) -> str:
     return 'other'
 
 
-def export_recording(match: pd.Series, data_root: str, out_dir_root: str, gopro_resolution: str = 'fhd', gopro_format: str = 'jpg', trim_from_gopro: bool = True):
+def export_recording(match: pd.Series, 
+                     data_root: str, 
+                     out_dir_root: str, 
+                     gopro_resolution: str = 'fhd', 
+                     gopro_format: str = 'jpg', 
+                     trim_from_gopro: bool = True
+) -> None:
     # Help to resolve the recording locations
     aris_dir = os.path.join(data_root, match['aris_file'])
     gantry_file = os.path.join(data_root, match['gantry_file'])
@@ -55,12 +61,18 @@ def export_recording(match: pd.Series, data_root: str, out_dir_root: str, gopro_
     # Export data
     indices = []
     gantry_data = []
-    for aris_frame_idx in tqdm(range(ctx.aris_start_frame, ctx.aris_end_frame + 1)):
+    print(f'{folder_basename(match['aris_file'])} [{ctx.aris_start_frame}:{ctx.aris_end_frame + 1}]')
+    for aris_frame_idx in trange(ctx.aris_start_frame, ctx.aris_end_frame + 1):
         frametime = ctx.get_aris_frametime(aris_frame_idx)
         
         # GoPro frames
         if ctx.has_gopro:
             gopro_file = os.path.join(rec_gopro, f'{aris_frame_idx:04}.{gopro_format}')
+
+            if os.path.isfile(gopro_file):
+                print(f' -> frame {aris_frame_idx} already exists in export, skipping rest of this recording')
+                break
+
             gopro_frame, _ = ctx.get_gopro_frame(frametime)
             if gopro_frame is not None:
                 cv2.imwrite(gopro_file, gopro_frame)
@@ -119,17 +131,12 @@ if __name__ == '__main__':
     
     recordings_dir = os.path.join(export_dir, 'recordings')
     for _,match in matches.iterrows():
-        try:
-            print(folder_basename(match['aris_file']))
-            export_recording(match, 
-                             data_root, 
-                             recordings_dir, 
-                             gopro_resolution=gopro_resolution, 
-                             gopro_format=gopro_format, 
-                             trim_from_gopro=trim_from_gopro)
-        except OSError:
-            print(' -> already exists, skipping')
-            continue
+        export_recording(match, 
+                            data_root, 
+                            recordings_dir, 
+                            gopro_resolution=gopro_resolution, 
+                            gopro_format=gopro_format, 
+                            trim_from_gopro=trim_from_gopro)
     
     # Copy 3d models
     print('Copying 3d models...')
