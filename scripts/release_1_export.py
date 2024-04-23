@@ -61,7 +61,8 @@ def export_recording(match: pd.Series,
     # Export data
     indices = []
     gantry_data = []
-    print(f'{folder_basename(match['aris_file'])} [{ctx.aris_start_frame}:{ctx.aris_end_frame + 1}]')
+    name = folder_basename(match['aris_file'])
+    print(f'{name} [{ctx.aris_start_frame}:{ctx.aris_end_frame + 1}]')
     for aris_frame_idx in trange(ctx.aris_start_frame, ctx.aris_end_frame + 1):
         frametime = ctx.get_aris_frametime(aris_frame_idx)
         
