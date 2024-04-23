@@ -28,7 +28,7 @@ def export_recording(match: pd.Series, data_root: str, out_dir_root: str, gopro_
     
     # Switch to different GoPro resolution if desired
     if gopro_resolution and gopro_file:
-        gopro_file = re.sub(r'/clips_.+?/', '/' + gopro_resolution + '/', gopro_file)
+        gopro_file = re.sub(r'/clips_.+?/', '/clips_' + gopro_resolution + '/', gopro_file)
         if gopro_file and not os.path.isfile(gopro_file):
             raise ValueError(f'{gopro_resolution}: missing GoPro file {gopro_file}')
     
