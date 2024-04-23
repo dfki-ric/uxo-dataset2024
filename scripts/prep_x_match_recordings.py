@@ -15,7 +15,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 from common.config import get_config
 from common.qrangeslider import QRangeSlider
 from common.q_custom_widgets import MainWidget, MySlider
-from common.matching_context import MatchingContext, get_aris_metadata, get_gantry_metadata, get_gopro_metadata, folder_basename
+from common.matching_context import MatchingContext, get_aris_metadata, get_gantry_metadata, folder_basename
 
 
 class QtMatchingContext(MatchingContext):
@@ -24,8 +24,8 @@ class QtMatchingContext(MatchingContext):
         
         self.aris_optical_flow = get_optical_flow(aris_dir)
         self.gopro_optical_flow = get_optical_flow(gopro_file)
-        self.gopro_original_creation_time = parse_gopro_datetime(self.gopro_meta['creation_time'])
-        self.gopro_original_creation_time_simple = self.gopro_original_creation_time.strftime('%Y-%m-%d_%H%M%S')
+        #self.gopro_original_creation_time = parse_gopro_datetime(self.gopro_meta['creation_time'])
+        #self.gopro_original_creation_time_simple = self.gopro_original_creation_time.strftime('%Y-%m-%d_%H%M%S')
         
         self.aris_img = None
         self.gopro_img = None
@@ -602,25 +602,33 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # GoPro
         gopro_items = []
-        gopro_meta = get_gopro_metadata(self.gopro_base_dir)
+        #gopro_meta = get_gopro_metadata(self.gopro_base_dir)
         for idx,item in enumerate(self.gopro_files):
+            # TODO Tried to determine whether a gopro clip was overlapping with the recording timestamps, but 
+            # it was not useful because for some reason all footage from day1 has the same creation date.
+            # Plus, there was no other use for extracting the gopro metadata, so if we don't do this here we 
+            # can avoid an entire preprocessing step. 
+            '''
             # GoPro clips are already cut to where the motion starts
             # Can't match metadata based on index since we have custom sorting
             gopro_file_meta = gopro_meta[gopro_meta['file'] == folder_basename(item)].iloc[0]
             gopro_creation_time = parse_gopro_datetime(gopro_file_meta['creation_time'])
+
             # TODO so far we showed everything in localtime, but hardcoding the offset is ugly...
             gopro_creation_time = gopro_creation_time.replace(hour=gopro_creation_time.hour + 2)
             gopro_datetime_simple = gopro_creation_time.strftime('%Y-%m-%d_%H%M%S')
-            
+
             # Check original timestamps to see if footage has overlap with ARIS
             gopro_t0 = (gopro_creation_time - dt.datetime.utcfromtimestamp(0).replace(tzinfo=pytz.UTC)).total_seconds()
             gopro_clip_start = (gopro_t0 + parse_gopro_timestamp(gopro_file_meta['original_start'])) * 1e6
             gopro_clip_end = (gopro_t0 + parse_gopro_timestamp(gopro_file_meta['original_end'])) * 1e6
+
+            overlapping = 'x' if gopro_clip_start < current_aris_end and gopro_clip_end > current_aris_start else ' '
+            gopro_items.append(f'({associated}) ( )  {idx:02}: {gopro_datetime_simple}  {folder_basename(item)}')
+            '''
             
             associated = '*' if idx in self.gopro_associated else ' '
-            overlapping = 'x' if gopro_clip_start < current_aris_end and gopro_clip_end > current_aris_start else ' '
-            # TODO overlapping is not useful because for some reason all footage from day1 has the same creation date
-            gopro_items.append(f'({associated}) ( )  {idx:02}: {gopro_datetime_simple}  {folder_basename(item)}')
+            gopro_items.append(f'({associated}) ( )  {idx:02}: {folder_basename(item)}')
         
         # Gantry
         gantry_items = []

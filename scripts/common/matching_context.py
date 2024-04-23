@@ -100,8 +100,9 @@ class MatchingContext:
         # Load GoPro clip
         self.has_gopro = bool(gopro_file)
         if gopro_file:
-            all_gopro_meta = get_gopro_metadata(os.path.dirname(gopro_file))
-            self.gopro_meta = all_gopro_meta.loc[all_gopro_meta['file'] == self.gopro_basename].iloc[0]
+            # GoPro metadata is no longer required (and was never useful)
+            #all_gopro_meta = get_gopro_metadata(os.path.dirname(gopro_file))
+            #self.gopro_meta = all_gopro_meta.loc[all_gopro_meta['file'] == self.gopro_basename].iloc[0]
             self.gopro_clip = cv2.VideoCapture(gopro_file)
             self.gopro_frame_idx = -1
             self.gopro_frames_total = int(self.gopro_clip.get(cv2.CAP_PROP_FRAME_COUNT))
