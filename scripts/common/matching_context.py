@@ -53,7 +53,7 @@ def get_gantry_metadata(gantry_files_dir):
 
 
 class MatchingContext:
-    def __init__(self, aris_dir, gantry_file, gopro_file, use_aris_polar=True):
+    def __init__(self, aris_dir, gantry_file, gopro_file, polar_img_format='png'):
         self.aris_basename = folder_basename(aris_dir)
         self.gantry_basename = folder_basename(gantry_file)
         self.gopro_basename = folder_basename(gopro_file)
@@ -61,15 +61,21 @@ class MatchingContext:
         self.recording_label = self.aris_basename
         
         # Load ARIS data
-        self._aris_use_polar = use_aris_polar
         aris_dir_polar = os.path.join(aris_dir, 'polar')
         
-        self.aris_frames_raw = sorted(os.path.join(aris_dir, f) for f in os.listdir(aris_dir) if f.lower().endswith('.pgm'))
+        self.aris_frames_raw = sorted(
+            os.path.join(aris_dir, f) 
+            for f in os.listdir(aris_dir) 
+            if f.lower().endswith('.pgm')
+        )
         try:
-            self.aris_frames_polar = sorted(os.path.join(aris_dir_polar, f) for f in os.listdir(aris_dir_polar) if f.lower().endswith('.pgm'))
+            self.aris_frames_polar = sorted(
+                os.path.join(aris_dir_polar, f) 
+                for f in os.listdir(aris_dir_polar) 
+                if f.lower().endswith(polar_img_format)
+            )
         except FileNotFoundError:
             print(f'ARIS dataset {self.aris_basename} does not contain polar frames, using raw frames instead')
-            self._aris_use_polar = False
             self.aris_frames_polar = None
         
         self.aris_file_meta, self.aris_frames_meta, self.aris_marks_meta = get_aris_metadata(aris_dir)
@@ -111,10 +117,6 @@ class MatchingContext:
             self._gopro_frame = None
 
 
-    @property
-    def aris_frames(self):
-        return self.aris_frames_polar if self._aris_use_polar else self.aris_frames_raw
-    
     @property
     def aris_start_frame(self):
         return self._aris_start_frame

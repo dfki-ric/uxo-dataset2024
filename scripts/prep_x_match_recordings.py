@@ -20,7 +20,10 @@ from common.matching_context import MatchingContext, get_aris_metadata, get_gant
 
 class QtMatchingContext(MatchingContext):
     def __init__(self, aris_dir, gantry_file, gopro_file):
-        super().__init__(aris_dir, gantry_file, gopro_file)
+        super().__init__(aris_dir, 
+                         gantry_file, 
+                         gopro_file, 
+                         polar_img_format=polar_img_format)
         
         self.aris_optical_flow = get_optical_flow(aris_dir)
         self.gopro_optical_flow = get_optical_flow(gopro_file)
@@ -71,14 +74,14 @@ class QtMatchingContext(MatchingContext):
         frametime = self.get_aris_frametime(self.aris_frame_idx)
         if self.aris_img is None:
             if colorize:
-                frame = cv2.imread(self.aris_frames[self.aris_frame_idx])
+                frame = cv2.imread(self.aris_frames_polar[self.aris_frame_idx])
                 frame_colorized = cv2.applyColorMap(frame, cv2.COLORMAP_TWILIGHT_SHIFTED)  # MAGMA, DEEPGREEN, OCEAN
                 h, w, channels = frame_colorized.shape
                 bytes_per_line = 3 * w
                 qimg = QtGui.QImage(frame_colorized.data, w, h, bytes_per_line, QtGui.QImage.Format_RGB888).rgbSwapped()
                 self.aris_img = QtGui.QPixmap(qimg)
             else:
-                self.aris_img = QtGui.QPixmap(self.aris_frames[self.aris_frame_idx])
+                self.aris_img = QtGui.QPixmap(self.aris_frames_polar[self.aris_frame_idx])
         return self.aris_img, frametime
     
 
@@ -163,7 +166,7 @@ class Association:
 
 
 class MainWindow(QtWidgets.QMainWindow):
-    def __init__(self, aris_base_dir, gopro_base_dir, gantry_base_dir, match_file, autoplay=False):
+    def __init__(self, aris_base_dir, gopro_base_dir, gantry_base_dir, match_file, polar_img_format, autoplay=False):
         super().__init__()
         
         self.aris_associated = set()
@@ -176,6 +179,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.gopro_base_dir = gopro_base_dir
         self.gantry_base_dir = gantry_base_dir
         self.match_file = match_file
+        self.polar_img_format = polar_img_format
         
         self.aris_data_dirs = sorted(os.path.join(aris_base_dir, f) for f in os.listdir(aris_base_dir))
         self.gopro_files = sorted([os.path.join(gopro_base_dir, f) for f in os.listdir(gopro_base_dir) if f.lower().endswith('.mp4')], key=gopro_sorting_key)
@@ -746,7 +750,7 @@ class MainWindow(QtWidgets.QMainWindow):
         gopro_file = self.gopro_files[gopro_idx]
         gantry_file = self.gantry_files[gantry_idx]
         
-        self.context = QtMatchingContext(aris_file, gantry_file, gopro_file)
+        self.context = QtMatchingContext(aris_file, gantry_file, gopro_file, self.polar_img_format)
         
         self.context.aris_tick_step = self.spinner_playback_fpu.value()
         
@@ -824,7 +828,8 @@ if __name__ == '__main__':
     gopro_dir_path = os.path.join(config["gopro_extract"], "clips_" + config["gopro_clip_resolution"])
     gantry_dir_path = config["gantry_extract"]
     match_file = config["match_file"]
+    polar_img_format = config["aris_to_polar_image_format"]
 
     app = QtWidgets.QApplication(sys.argv)
-    main = MainWindow(aris_dir_path, gopro_dir_path, gantry_dir_path, match_file)
+    main = MainWindow(aris_dir_path, gopro_dir_path, gantry_dir_path, match_file, polar_img_format)
     sys.exit(app.exec_())

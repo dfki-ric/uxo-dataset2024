@@ -23,6 +23,7 @@ def get_target_type(notes: str) -> str:
 def export_recording(match: pd.Series, 
                      data_root: str, 
                      out_dir_root: str, 
+                     aris_polar_img_format: str = 'png',
                      gopro_resolution: str = 'fhd', 
                      gopro_format: str = 'jpg', 
                      trim_from_gopro: bool = True
@@ -39,7 +40,10 @@ def export_recording(match: pd.Series,
             raise ValueError(f'{gopro_resolution}: missing GoPro file {gopro_file}')
     
     # Context makes it much easier to retrieve individual data points from the processed recordings
-    ctx = MatchingContext(aris_dir, gantry_file, gopro_file)
+    ctx = MatchingContext(aris_dir, 
+                          gantry_file, 
+                          gopro_file, 
+                          polar_img_format=aris_polar_img_format)
     ctx.aris_start_frame = match['aris_onset']
     ctx.gopro_offset = match['gopro_offset']
     ctx.gantry_offset = match['gantry_offset']
@@ -84,7 +88,7 @@ def export_recording(match: pd.Series,
             
         # ARIS frames
         shutil.copy(ctx.aris_frames_raw[aris_frame_idx], os.path.join(rec_aris_raw, f'{aris_frame_idx:04}.pgm'))
-        shutil.copy(ctx.aris_frames_polar[aris_frame_idx], os.path.join(rec_aris_polar, f'{aris_frame_idx:04}.pgm'))
+        shutil.copy(ctx.aris_frames_polar[aris_frame_idx], os.path.join(rec_aris_polar, f'{aris_frame_idx:04}.{aris_polar_img_format}'))
         
         # Collect gantry data (write later)
         (x, y, z), _ = ctx.get_gantry_odom(frametime)
@@ -114,6 +118,7 @@ if __name__ == '__main__':
 
     match_file = config["match_file"]
     export_dir = config["export_dir"]
+    polar_img_format = config["aris_to_polar_image_format"]
     gopro_resolution = config.get("export_gopro_resolution", "fhd")
     gopro_format = config.get("export_gopro_format", "jpg")
     trim_from_gopro = config.get("export_only_with_gopro", True)
@@ -133,11 +138,12 @@ if __name__ == '__main__':
     recordings_dir = os.path.join(export_dir, 'recordings')
     for _,match in matches.iterrows():
         export_recording(match, 
-                            data_root, 
-                            recordings_dir, 
-                            gopro_resolution=gopro_resolution, 
-                            gopro_format=gopro_format, 
-                            trim_from_gopro=trim_from_gopro)
+                         data_root, 
+                         recordings_dir, 
+                         aris_polar_img_format=polar_img_format,
+                         gopro_resolution=gopro_resolution, 
+                         gopro_format=gopro_format, 
+                         trim_from_gopro=trim_from_gopro)
     
     # Copy 3d models
     print('Copying 3d models...')
