@@ -66,8 +66,7 @@ def export_recording(match: pd.Series,
     indices = []
     gantry_data = []
     name = folder_basename(match['aris_file'])
-    print(f'{name} [{ctx.aris_start_frame}:{ctx.aris_end_frame + 1}]')
-    for aris_frame_idx in trange(ctx.aris_start_frame, ctx.aris_end_frame + 1):
+    for aris_frame_idx in trange(ctx.aris_start_frame, ctx.aris_end_frame + 1, desc=name):
         frametime = ctx.get_aris_frametime(aris_frame_idx)
         
         # GoPro frames
@@ -136,7 +135,7 @@ if __name__ == '__main__':
     })
     
     recordings_dir = os.path.join(export_dir, 'recordings')
-    for _,match in matches.iterrows():
+    for _,match in tqdm(matches.itertuples(), total=len(matches), desc='overall'):
         export_recording(match, 
                          data_root, 
                          recordings_dir, 
@@ -156,7 +155,7 @@ if __name__ == '__main__':
     # Copy scripts
     print('Copying scripts...')
     scripts_dir = os.path.join(export_dir, 'scripts/')
-    shutil.copytree(os.path.join(os.path.dirname(__file__), '../'), 
+    shutil.copytree(os.path.dirname(__file__), 
                     scripts_dir, 
                     dirs_exist_ok=True, 
                     ignore=lambda src, names: [x for x in names if '__pycache__' in x])
@@ -165,7 +164,7 @@ if __name__ == '__main__':
     print('Tidying up...')
     other_files = [
         '../README.md',
-        '../dataset.jpg',
+        '../preview.jpg',
     ]
     for file in other_files:
         shutil.copy(os.path.join(data_root, file), export_dir)
