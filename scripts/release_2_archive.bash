@@ -9,9 +9,9 @@ archive="$(dirname $indir)/$(basename $indir)"
 trap "exit" INT
 
 # Archive everything, excluding polar transformed images
-7z a -mx=5 -r "${archive}.7z" $1 -xr'!*/aris_polar/*'
+7z a -mx=5 -r "${archive}.7z" $indir -xr'!*/aris_polar/*'
 
 # Archive only the polar transformed images
-7z a -mx=5 -r "${archive}_polar.7z" -ir"!${1}*/aris_polar/*"
+7z a -mx=5 -r "${archive}_polar.7z" -ir"!${$indir}*/aris_polar/*"
 
 echo "Created archive: $archive"
