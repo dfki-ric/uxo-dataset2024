@@ -6,8 +6,9 @@ mydir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 indir=$(sed -n -e 's/^export_dir://p' $mydir/config.yaml | tr -d '"' | xargs)
 archive="$(dirname $indir)/archives/$(basename $indir)"
 
+outdir="$(dirname $indir)/archives/"
 trap "exit" INT
-mkdir -p "$(dirname $indir)/archives/"
+mkdir -p "$outdir"
 
 # Recordings, excluding polar transformed images
 7z a -mx=5 -r "${archive}_recordings.7z" $indir/recordings/ -xr'!*/aris_polar/*'
@@ -20,5 +21,8 @@ mkdir -p "$(dirname $indir)/archives/"
 
 # Scripts
 7z a -mx=5 -r "${archive}_scripts.7z" $indir/scripts/
+
+# Copy stuff like README and preview picture
+cp "$indir/*.*" "$outdir/"
 
 echo "Created archive: $archive"
