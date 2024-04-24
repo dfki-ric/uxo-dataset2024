@@ -14,8 +14,8 @@
 # As with the python scripts, this script reads the config.yaml file and uses the options therein.
 
 mydir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
-indir=$(sed -n -e 's/^gopro_input://p' "$mydir/config.yaml" | tr -d '"')
-outdir=$(sed -n -e 's/^gopro_extract://p' "$mydir/config.yaml" | tr -d '"')/clips_uhd
+indir=$(sed -n -e 's/^gopro_input://p' "$mydir/config.yaml" | tr -d '"' | xargs)
+outdir=$(sed -n -e 's/^gopro_extract://p' "$mydir/config.yaml" | tr -d '"' | xargs)/clips_uhd
 
 # Downscaling is more efficient on the cut clips (see next script)
 options='-c copy -an'

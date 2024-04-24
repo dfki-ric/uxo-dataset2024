@@ -7,8 +7,8 @@
 # this script reads the config.yaml file and uses the options therein.
 
 mydir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
-gopro_clips=$(sed -n -e 's/^gopro_extract://p' "$mydir/config.yaml" | tr -d '"')
-resolutions=$(sed -n -e 's/^gopro_clip_resolution://p' "$mydir/config.yaml" | tr -d '"')
+gopro_clips=$(sed -n -e 's/^gopro_extract://p' "$mydir/config.yaml" | tr -d '"' | xargs)
+resolutions=$(sed -n -e 's/^gopro_clip_resolution://p' "$mydir/config.yaml" | tr -d '"' | xargs)
 indir="$gopro_clips/clips_uhd"
 
 export IFS="+"
