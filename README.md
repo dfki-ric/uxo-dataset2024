@@ -1,3 +1,19 @@
+# About
+We present a dataset for acoustic and optical sensing of unexploded ordnance (UXO) underwater.
+
+UXO in the sea pose an environmental problem and a challenge for the growing offshore economy. It is best practice to perform the recovery of ammunition without explosions to protect anthropogenic structures and marine mammals. During explosive ordnance disposal (EOD), experts often rely on optical images. However, visibility underwater may be limited in harbor areas, after storm events or in waters with very mobile sediments. Thus, visual inspection is not always possible. EOD experts therefore use high-frequency sonars with large vertical apertures like the ARIS Explorer 3000 for acoustic imaging. While efforts have been made to use the available information for 3D reconstruction, existing solutions can be limited to predefined motion patterns. 
+
+The topic is inherently sensitive, and most of the data is acquired by and for private companies and not made available to the public, which impedes research in this area. Additionally, in-situ data often lacks sufficient pose information. To facilitate further research, we created a validation dataset that was recorded in a controlled experimental environment. It has the following properties:
+
+- Over 100 recordings of 3 different UXO.
+- More than 92000 matched and annotated imaging sonar and camera frames.
+- UXO ground truths in the form of photogrammetric 3D models.
+- Precise position and attitude sensor data with respect to the targets.
+- Realistic motion trajectories achievable in non-experimental environments.
+
+This dataset allows quantitative analysis with different algorithms. 3D models and trajectories can be compared against each other to evaluate different solutions.
+
+
 # Viewing the data
 The exported data uses simple, well-established formats, namely .pgm, .jpg, .csv, .yaml and .txt. For convenience, we provide a script that loads an exported recording and allows to step through datapoints in a synchronized fashion using the arrow keys. To view a recording, use the following command:
 
