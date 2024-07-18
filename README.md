@@ -113,67 +113,65 @@ In addition, between 150 and 300 pictures were taken for photogrammetry of every
 - Focal length: 18mm
 
 
-# Object origins
+# Transforms
+The acoustic origin of the ARIS lies 2.5cm forward from the rearmost surface. The beam forming center, i.e. the point where all beams cross in the azimuth direction, has about 5cm travel depending on the focus, but can be estimated as the center of the lens housing. For our transforms below we assume that the sonar's acoustic origin coincides with the center of rotation. 
 
-## 100lbs aircraft bomb
-- Front point (object tip)
-    - x: 1.254022
-    - y: 1.190926
-    - z: -1.151828
+## Crane -> ARIS
+- Offsets in gantry crane frame, i.e. the wall behind the UXO is in the Y direction and Z is pointing upwards.
+- dx = 0
+- dy = 174
+- dz = -338
 
-- Top point 
-    - x: 1.251079
-    - y: 1.418704
-    - z: -0.96597
+## GoPro
+- All offsets in ARIS optical frame
+- x = left
+- y = up
+- z = forward (optical axis)
 
-**Object point:** (1.251079, 1.418704, -1.151828)
+### ARIS -> GoPro Lens Front
+- (assuming no pitch between GoPro and ARIS, see below)
+- dx = -4.5
+- dy = +154.5
+- dz = +167
 
-## Mortar shell
-- Front point (object tip)
-    - x: 1.6512390000000001
-    - y: 1.2631050000000001
-    - z: -1.1809090000000002
-- Top point 
-    - x: 1.263516
-    - y: 1.252357
-    - z: -1.0917249999999998
+### ARIS -> GoPro Mounting Hole
+- Threaded hole on top of ARIS on its right "ear" (-x in ARIS frame)
+- dx = -23
+- dy = +105.5
+- dz = +126.5
 
-**Object point:** (1.2351, 1.25, -1.192784)
+### GoPro Mounting Hole -> GoPro Lens Front
+- Center of the glass surface protecting the GoPro lens
+- GoPro was mounted with a slight angle of 3-4° around a point at +0/+7.5/+21.25 from the mounting hole
+- dx = +19.5
+- dy = +49
+- dz = +40.5
 
-## Incindiary 
-- Front point (object tip)
-    - x: 1.6446880000000001
-    - y: 1.235233
-    - z: -1.192784
-- Top point
-    - x: 1.2350999999999999
-    - y: 1.25
-    - z: -1.019191
+## UXO
+- *Measured*: point recorded by visually aligning crane with center of UXO
+- *Corrected*: measured point with Crane->ARIS offset applied, i.e. what the crane would have measured if we aligned it without the ARIS
+- Units in m
 
-**Object point:** (1.2351, 1.25, -1.192784)
+### 100lbs
+- Measured: (1.251079, 1.190926, -1.151828)
+- Corrected: (1.251079,  1.592704, -1.489828)
 
-## Test cylinder
-- Front point (object tip)
-    - x: 1.674253
-    - y: 1.122848
-    - z: -1.123439
+### Mortar Shell
+- Measured: (1.263516, 1.2631, -1.18091)
+- Corrected: (1.263516, 1.4371, -1.51891)
 
-- Top point
-    - x: 1.277832
-    - y: 1.225541
-    - z: -0.948813
+### Incendiary
+- Measured: (1.2351, 1.235233, -1.192784)
+- Corrected: (1.2351, 1.409233, -1.530784)
 
-**Object point:** (1.277832, 1.225541, -1.123439)
+### Test Cylinder
+- Measured: (1.277832, 1.225541, -1.123439)
+- Corrected: (1.277832, 1.399541, -1.461439)
 
-## 100lbs bomb (on ground)
-- Top point
-    - x: 1.174003
-    - y: 1.053536
-    - z: -1.497432
-
-**Object point:** (1.174003, 1.053536, -1903.1)
-
-> Note: the portal crane could not reach low enough to estimate the front point. The height was thus estimated from the object diameter, the known depth of the floor, and the PTU mounting dimensions.
+### 100lbs (floor)
+- Measured: (1.174003, 1.053536, *?*)
+- Corrected: (1.174003, 1.227536, -2.236)
+- Note: the portal crane could not reach low enough to estimate the Z offset; the Z offset was thus estimated from the known depth of the floor (-2.34m) and the object diameter (208mm).
 
 
 # How the dataset was prepared
