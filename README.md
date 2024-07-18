@@ -123,28 +123,28 @@ The acoustic origin of the ARIS lies 2.5cm forward from the rearmost surface. Th
 - dz = -338
 
 ## GoPro
-- All offsets in ARIS optical frame
-- x = left
-- y = up
+- All offsets in ARIS acoustic frame (analog conventional optical frame of cameras)
+- x = right
+- y = down
 - z = forward (optical axis)
 
 ### ARIS -> GoPro Lens Front
 - (assuming no pitch between GoPro and ARIS, see below)
-- dx = -4.5
-- dy = +154.5
+- dx = +3.5
+- dy = -154.5
 - dz = +167
 
 ### ARIS -> GoPro Mounting Hole
 - Threaded hole on top of ARIS on its right "ear" (-x in ARIS frame)
-- dx = -23
-- dy = +105.5
+- dx = +23
+- dy = -105.5
 - dz = +126.5
 
 ### GoPro Mounting Hole -> GoPro Lens Front
 - Center of the glass surface protecting the GoPro lens
-- GoPro was mounted with a slight angle of 3-4° around a point at +0/+7.5/+21.25 from the mounting hole
-- dx = +19.5
-- dy = +49
+- GoPro was mounted with a slight angle of 3-4° around a point at +0/-7.5/+21.25 from the mounting hole
+- dx = -19.5
+- dy = -49
 - dz = +40.5
 
 ## UXO
