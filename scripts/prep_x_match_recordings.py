@@ -19,7 +19,7 @@ from common.matching_context import MatchingContext, get_aris_metadata, get_gant
 
 
 class QtMatchingContext(MatchingContext):
-    def __init__(self, aris_dir, gantry_file, gopro_file):
+    def __init__(self, aris_dir, gantry_file, gopro_file, polar_img_format='png'):
         super().__init__(aris_dir, 
                          gantry_file, 
                          gopro_file, 
@@ -96,8 +96,12 @@ class QtMatchingContext(MatchingContext):
     
         
 
-def gopro_sorting_key(filename):
-    base = os.path.splitext(folder_basename(filename))[0]
+def gopro_sorting_key(filepath):
+    filename = os.path.splitext(folder_basename(filepath))[0]
+    base = filename
+    if not base.startswith('GX'):  # Note: could also be GH when using different encoding
+        base = base[base.find('GX'):]
+    
     #prefix = base[:2]   # GX
     chapter = base[2:4]  # 01
     vid = base[4:8]      # 0010
@@ -749,6 +753,8 @@ class MainWindow(QtWidgets.QMainWindow):
         aris_file = self.aris_data_dirs[aris_idx]
         gopro_file = self.gopro_files[gopro_idx]
         gantry_file = self.gantry_files[gantry_idx]
+
+        print(aris_file, gopro_file, gantry_file)
         
         self.context = QtMatchingContext(aris_file, gantry_file, gopro_file, self.polar_img_format)
         

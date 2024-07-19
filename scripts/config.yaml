@@ -59,7 +59,7 @@ aris_optical_flow_recalc: False
 gantry_input: "../data_raw/gantry"
 
 # Where the extracted trajectories should be placed.
-gantry_extract: "/data_processed/gantry"
+gantry_extract: "../data_processed/gantry"
 
 # Adjustment to timestamps in hours.
 gantry_time_adjust: 2
