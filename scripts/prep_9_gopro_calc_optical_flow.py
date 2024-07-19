@@ -41,7 +41,7 @@ if __name__ == '__main__':
     method = config.get("gopro_optical_flow_method", "lk")
     recalc = config.get("gopro_optical_flow_recalc", True)
 
-    for res in resolutions:
+    for res in resolutions.split('+'):
         gopro_clips = sorted([os.listdir(os.path.join(input_path, "clips_" + res))])
 
         for clip in tqdm(gopro_clips):
