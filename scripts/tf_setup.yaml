@@ -1,0 +1,71 @@
+setup:
+  - frame_id: "setup/ar3"
+    parent_frame_id: "setup/portal_crane"
+    translation:
+      x: 0.0
+      y: 0.174
+      z: -0.338
+    rotation:
+      x: 0.707107
+      y: 0.707107
+      z: 0.0
+      w: 0.0
+  - frame_id: "setup/aris"
+    parent_frame_id: "setup/ar3"
+    translation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    rotation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+  - frame_id: "setup/sonar"
+    parent_frame_id: "setup/aris"
+    translation:
+      x: -0.108725
+      y: 0.0
+      z: 0.0
+    rotation:
+      x: 0.5
+      y: 0.5
+      z: 0.5
+      w: 0.5
+  - frame_id: "setup/gopro_mounting_hole"
+    parent_frame_id: "setup/ar3"
+    translation:
+      x: 0.1265
+      y: 0.023
+      z: -0.1055
+    rotation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+  - frame_id: "setup/gopro_mounting_axis"
+    parent_frame_id: "setup/gopro_mounting_hole"
+    translation:
+      x: 0.02125
+      y: 0.0
+      z: -0.0075
+    rotation:
+      x: 0.0      
+      y: -0.034899
+      z: 0.0      
+      w: 0.999391
+      # x: 0.0
+      # y: 0.0
+      # z: 0.0
+      # w: 1.0
+  - frame_id: "setup/camera"
+    parent_frame_id: "setup/gopro_mounting_axis"
+    translation:
+      x: 0.01925
+      y: -0.0195
+      z: -0.0415
+    rotation:
+      x: 0.5
+      y: 0.5
+      z: 0.5
+      w: 0.5
