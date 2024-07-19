@@ -26,7 +26,7 @@ def calc_optical_flow_farnerback(frame_iterator, flow_params):
     return np.array(overall_flow)
 
 def calc_optical_flow_lk(frame_iterator, flow_params, feature_params=None):
-    overall_flow = []
+    overall_flow = [0.]
     try:
         prev_frame = next(frame_iterator)
     except TypeError:
