@@ -43,7 +43,7 @@ class _FallbackArgs(Mapping):
         return str(self.args)
 
 
-def get_config(config_path: str = None) -> dict:
+def get_config(config_path: str = "") -> dict:
     if not config_path and len(sys.argv) > 1:
         config_path = sys.argv[1]
 
