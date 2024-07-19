@@ -78,19 +78,17 @@ class QtMatchingContext(MatchingContext):
                 frame_colorized = cv2.applyColorMap(frame, cv2.COLORMAP_TWILIGHT_SHIFTED)  # MAGMA, DEEPGREEN, OCEAN
                 h, w, channels = frame_colorized.shape
                 bytes_per_line = 3 * w
-                qimg = QtGui.QImage(frame_colorized.data, w, h, bytes_per_line, QtGui.QImage.Format_RGB888).rgbSwapped()
-                self.aris_img = QtGui.QPixmap(qimg)
+                self.aris_img = QtGui.QImage(frame_colorized.data, w, h, bytes_per_line, QtGui.QImage.Format_RGB888).rgbSwapped()
             else:
-                self.aris_img = QtGui.QPixmap(self.aris_frames_polar[self.aris_frame_idx])
+                self.aris_img = QtGui.QImage(self.aris_frames_polar[self.aris_frame_idx])
         return self.aris_img, frametime
     
 
     def get_gopro_frame(self, aris_frametime, exact: bool = True):
         frame, idx = super().get_gopro_frame(aris_frametime, exact)
-        if frame:
+        if frame is not None:
             img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            q_img = QtGui.QImage(img, img.shape[1], img.shape[0], QtGui.QImage.Format_RGB888)
-            self.gopro_img = QtGui.QPixmap(q_img)
+            self.gopro_img = QtGui.QImage(img, img.shape[1], img.shape[0], QtGui.QImage.Format_RGB888)
         
         return self.gopro_img, self.gopro_frame_idx
     
@@ -106,7 +104,7 @@ def gopro_sorting_key(filepath):
     chapter = base[2:4]  # 01
     vid = base[4:8]      # 0010
     clip = base[9:11]    # _01
-    return f'{vid}{chapter}{clip}'
+    return f'{chapter}{vid}{clip}'
 
 def split_microseconds(timestamp_us):
     s = int(timestamp_us // 1e6)
@@ -193,6 +191,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self.context = None
         self.dirty = False
         self.playing = autoplay
+
+        screenRect = QtWidgets.QApplication.desktop().screenGeometry()
         
         # QT things
         self._main_widget = MainWidget(self)
@@ -202,6 +202,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas_aris = QtWidgets.QLabel()
         #self.canvas_aris.setScaledContents(True)
         self.canvas_aris.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.canvas_aris.setMaximumHeight(screenRect.height() - 50)
+        self.canvas_aris.setMaximumWidth(int(screenRect.height() * 0.25))
+        self.canvas_aris.setScaledContents(True)
         self.canvas_gopro = QtWidgets.QLabel()
         #self.canvas_gopro.setScaledContents(True)
         self.canvas_gopro.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
@@ -695,6 +698,13 @@ class MainWindow(QtWidgets.QMainWindow):
     def needs_update(self):
         return self.playing or self.context is None or self.dirty
 
+    def set_image_scaled(self, qimg, label) -> None:
+        label_width = label.maximumWidth()
+        label_height = label.maximumHeight()
+        qimage_scaled = qimg.scaled(label_width, label_height, QtCore.Qt.KeepAspectRatio)
+        pixmap = QtGui.QPixmap.fromImage(qimage_scaled)
+        label.setPixmap(pixmap)
+
     def do_update(self):
         if not self.needs_update():
             return
@@ -708,12 +718,12 @@ class MainWindow(QtWidgets.QMainWindow):
         # ARIS
         aris_frame, aris_frametime = self.context.get_aris_frame()
         self.slider_aris_pos.setValue(self.context.aris_frame_idx)
-        self.canvas_aris.setPixmap(aris_frame)
+        self.set_image_scaled(aris_frame, self.canvas_aris)
         
         # GoPro
         gopro_frame, gopro_frame_idx = self.context.get_gopro_frame(aris_frametime, False)
         if gopro_frame:
-            self.canvas_gopro.setPixmap(gopro_frame)
+            self.canvas_gopro.setPixmap(QtGui.QPixmap(gopro_frame))
             self.slider_gopro_pos.setValue(gopro_frame_idx)
             self.spinner_gopro_pos.setValue(gopro_frame_idx)
         else:
