@@ -65,14 +65,23 @@ if __name__ == '__main__':
             if f.lower().endswith('.pgm')
         )
         
-        def imageFileIterator():
-            for idx in trange(len(aris_frames)):
-                yield cv2.imread(aris_frames[idx], cv2.IMREAD_UNCHANGED)
+        class ImageFileIterator:
+            def __init__(self, image_files) -> None:
+                self._image_files = image_files
+            
+            def __iter__(self):
+                for idx in trange(len(self._image_files)):
+                    yield cv2.imread(self._image_files[idx], cv2.IMREAD_UNCHANGED)
+                    
+            def __len__(self):
+                return len(self._image_files)
+        
+        iterator = ImageFileIterator(aris_frames)
         
         if method == 'lk':
-            flow = calc_optical_flow_lk(imageFileIterator, method, flow_params_lk, feature_params_lk)
+            flow = calc_optical_flow_lk(iterator, flow_params_lk, feature_params_lk)
         elif method == 'farnerback':
-            flow = calc_optical_flow_farnerback(imageFileIterator, method, flow_params_farneback)
+            flow = calc_optical_flow_farnerback(iterator, flow_params_farneback)
         else:
             raise ValueError('Invalid method')
         

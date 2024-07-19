@@ -36,16 +36,17 @@ feature_params_lk = dict(
 if __name__ == '__main__':
     config = get_config()
 
-    input_path = config["gopro_extract"]
+    gopro_base_path = config["gopro_extract"]
     resolutions = config["gopro_clip_resolution"]
     method = config.get("gopro_optical_flow_method", "lk")
     recalc = config.get("gopro_optical_flow_recalc", True)
 
     for res in resolutions.split('+'):
-        gopro_clips = sorted(os.listdir(os.path.join(input_path, "clips_" + res)))
+        clips_path = os.path.join(gopro_base_path, "clips_" + res)
+        gopro_clips = sorted(os.listdir(clips_path))
 
         for clip in tqdm(gopro_clips):
-            clip_path = os.path.join(input_path, clip)
+            clip_path = os.path.join(clips_path, clip)
 
             out_file = os.path.join(
                 os.path.dirname(clip_path), 
@@ -55,21 +56,28 @@ if __name__ == '__main__':
                 print(f'{out_file} already exists, skipping')
                 sys.exit(0)
             
-            clip = cv2.VideoCapture(clip_path)
-            num_frames = int(clip.get(cv2.CAP_PROP_FRAME_COUNT))
+            class GoproIterator:
+                def __init__(self, video) -> None:
+                    self._clip = cv2.VideoCapture(video)
+                    self._num_frames = int(self._clip.get(cv2.CAP_PROP_FRAME_COUNT))
+                
+                def __iter__(self):
+                    for idx in trange(len(self)):
+                        self._clip.set(cv2.CAP_PROP_POS_FRAMES, idx)
+                        has_frame, frame = self._clip.read()
+                        if not has_frame:
+                            break
+                        yield cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                        
+                def __len__(self):
+                    return self._num_frames
             
-            def goproIterator():
-                for idx in trange(num_frames):
-                    clip.set(cv2.CAP_PROP_POS_FRAMES, idx)
-                    has_frame, frame = clip.read()
-                    if not has_frame:
-                        break
-                    yield cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            iterator = GoproIterator(clip_path)
             
             if method == 'lk':
-                flow = calc_optical_flow_lk(goproIterator, method, flow_params_lk, feature_params_lk)
+                flow = calc_optical_flow_lk(iterator, flow_params_lk, feature_params_lk)
             elif method == 'farnerback':
-                flow = calc_optical_flow_farnerback(goproIterator, method, flow_params_farneback)
+                flow = calc_optical_flow_farnerback(iterator, flow_params_farneback)
             else:
                 raise ValueError('Invalid method')
 

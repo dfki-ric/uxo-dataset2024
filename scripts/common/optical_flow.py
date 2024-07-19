@@ -10,7 +10,7 @@ def calc_overall_flow(flow):
     return np.linalg.norm((dx, dy))
 
 
-def calc_optical_flow_farnerback(frame_iterator, method, flow_params):
+def calc_optical_flow_farnerback(frame_iterator, flow_params):
     overall_flow = []
     prev_frame = next(frame_iterator)
     
@@ -25,9 +25,13 @@ def calc_optical_flow_farnerback(frame_iterator, method, flow_params):
     
     return np.array(overall_flow)
 
-def calc_optical_flow_lk(frame_iterator, method, flow_params, feature_params=None):
+def calc_optical_flow_lk(frame_iterator, flow_params, feature_params=None):
     overall_flow = []
-    prev_frame = next(frame_iterator)
+    try:
+        prev_frame = next(frame_iterator)
+    except TypeError:
+        frame_iterator = iter(frame_iterator)
+        prev_frame = next(frame_iterator)
     
     # Lucas-Kanade sparse flow
     feature_finder_interval = 10
