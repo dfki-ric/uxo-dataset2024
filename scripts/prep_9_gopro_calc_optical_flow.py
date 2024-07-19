@@ -36,46 +36,48 @@ feature_params_lk = dict(
 if __name__ == '__main__':
     config = get_config()
 
-    input_path = config["gopro_clips"]
+    input_path = config["gopro_extract"]
+    resolutions = config["gopro_clip_resolution"]
     method = config.get("gopro_optical_flow_method", "lk")
     recalc = config.get("gopro_optical_flow_recalc", True)
 
-    gopro_clips = sorted([os.listdir(input_path)])
+    for res in resolutions:
+        gopro_clips = sorted([os.listdir(os.path.join(input_path, "clips_" + res))])
 
-    for clip in tqdm(gopro_clips):
-        clip_path = os.path.join(input_path, clip)
+        for clip in tqdm(gopro_clips):
+            clip_path = os.path.join(input_path, clip)
 
-        out_file = os.path.join(
-            os.path.dirname(clip_path), 
-            os.path.splitext(os.path.basename(clip_path))[0] + '_flow.csv'
-        )
-        if not recalc and os.path.isfile(out_file):
-            print(f'{out_file} already exists, skipping')
-            sys.exit(0)
-        
-        class GoproIterator:
-            def __init__(self, video) -> None:
-                self._clip = cv2.VideoCapture(video)
-                self._num_frames = int(self._clip.get(cv2.CAP_PROP_FRAME_COUNT))
+            out_file = os.path.join(
+                os.path.dirname(clip_path), 
+                os.path.splitext(os.path.basename(clip_path))[0] + '_flow.csv'
+            )
+            if not recalc and os.path.isfile(out_file):
+                print(f'{out_file} already exists, skipping')
+                sys.exit(0)
             
-            def __iter__(self):
-                for idx in trange(len(self)):
-                    self._clip.set(cv2.CAP_PROP_POS_FRAMES, idx)
-                    has_frame, frame = self._clip.read()
-                    if not has_frame:
-                        break
-                    yield cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                    
-            def __len__(self):
-                return self._num_frames
-        
-        iter = GoproIterator(clip_path)
-        
-        if method == 'lk':
-            flow = calc_optical_flow_lk(iter, method, flow_params_lk, feature_params_lk)
-        elif method == 'farnerback':
-            flow = calc_optical_flow_farnerback(iter, method, flow_params_farneback)
-        else:
-            raise ValueError('Invalid method')
+            class GoproIterator:
+                def __init__(self, video) -> None:
+                    self._clip = cv2.VideoCapture(video)
+                    self._num_frames = int(self._clip.get(cv2.CAP_PROP_FRAME_COUNT))
+                
+                def __iter__(self):
+                    for idx in trange(len(self)):
+                        self._clip.set(cv2.CAP_PROP_POS_FRAMES, idx)
+                        has_frame, frame = self._clip.read()
+                        if not has_frame:
+                            break
+                        yield cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                        
+                def __len__(self):
+                    return self._num_frames
+            
+            iter = GoproIterator(clip_path)
+            
+            if method == 'lk':
+                flow = calc_optical_flow_lk(iter, method, flow_params_lk, feature_params_lk)
+            elif method == 'farnerback':
+                flow = calc_optical_flow_farnerback(iter, method, flow_params_farneback)
+            else:
+                raise ValueError('Invalid method')
 
-        pd.DataFrame(flow).to_csv(out_file, header=None, index=None)
+            pd.DataFrame(flow).to_csv(out_file, header=None, index=None)

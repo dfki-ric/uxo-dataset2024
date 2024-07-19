@@ -68,7 +68,7 @@ gantry_time_adjust: 2
 # prep_7_gopro_cut.bash
 # ---------------------
 # Where the gopro footage has been stored.
-gopro_input: "../data_raw/gopro/uhd"
+gopro_input: "../data_raw/gopro/"
 
 # Where the extracted clips should be placed.
 gopro_extract: "../data_processed/gopro"
@@ -76,7 +76,7 @@ gopro_extract: "../data_processed/gopro"
 # Target resolution of the clips when downsampling. Combine several resolutions as "fhd+sd"
 #  - fhd: full HD (1080p, 1920x1080), convenient for export
 #  - sd: low resolution (640x360), best for previews and matching
-gopro_clip_resolution: "fhd+sd"
+gopro_clip_resolution: "sd+fhd"
 
 # Method to use for optical flow calculation on gopro footage. See documentation above on aris
 # optical flow calculation for details.
