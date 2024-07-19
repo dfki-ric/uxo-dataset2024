@@ -43,12 +43,13 @@ class _FallbackArgs(Mapping):
         return str(self.args)
 
 
-def get_config() -> dict:
-    if len(sys.argv) > 1:
+def get_config(config_path: str = None) -> dict:
+    if not config_path and len(sys.argv) > 1:
         config_path = sys.argv[1]
 
     if not path.isfile(config_path):
         config_path = path.join(path.dirname(path.realpath(__file__)), '..',  'config.yaml')
+        print(f"No valid config path given, defaulting to {config_path}")
 
     if not path.isfile(config_path) and len(sys.argv) > 1:
         # This way the user should still be able to call scripts and pass any arguments as 
