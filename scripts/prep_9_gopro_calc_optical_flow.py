@@ -42,11 +42,12 @@ if __name__ == '__main__':
     recalc = config.get("gopro_optical_flow_recalc", True)
 
     for res in resolutions.split('+'):
-        clips_path = os.path.join(gopro_base_path, "clips_" + res)
-        gopro_clips = sorted(os.listdir(clips_path))
+        all_clips_path = os.path.join(gopro_base_path, "clips_" + res)
+        gopro_clips = sorted([f for f in os.listdir(all_clips_path) if f.endswith('.mp4')])
 
         for clip in tqdm(gopro_clips):
-            clip_path = os.path.join(clips_path, clip)
+            clip_path = os.path.join(all_clips_path, clip)
+            print(clip_path)
 
             out_file = os.path.join(
                 os.path.dirname(clip_path), 
