@@ -46,7 +46,8 @@ class _FallbackArgs(Mapping):
 def get_config() -> dict:
     if len(sys.argv) > 1:
         config_path = sys.argv[1]
-    else:
+
+    if not path.isfile(config_path):
         config_path = path.join(path.dirname(path.realpath(__file__)), '..',  'config.yaml')
 
     if not path.isfile(config_path) and len(sys.argv) > 1:
