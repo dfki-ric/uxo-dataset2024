@@ -825,7 +825,13 @@ if __name__ == '__main__':
     config = get_config()
 
     aris_dir_path = config["aris_extract"]
-    gopro_dir_path = os.path.join(config["gopro_extract"], "clips_" + config["gopro_clip_resolution"])
+    for res in ["sd"] + config["gopro_clip_resolution"].split("+") + ["fhd", "uhd"]:
+        gopro_dir_path = os.path.join(config["gopro_extract"], "clips_" + res)
+        if os.path.isdir(gopro_dir_path):
+            break
+    else:
+        raise Exception(f"Could not find gopro clips directory for any supported resolution")
+
     gantry_dir_path = config["gantry_extract"]
     match_file = config["match_file"]
     polar_img_format = config["aris_to_polar_image_format"]
