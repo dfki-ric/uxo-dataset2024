@@ -6,8 +6,8 @@ setup:
       y: 0.174
       z: -0.338
     rotation:
-      x: 0.707107
-      y: 0.707107
+      x: 0.0
+      y: 1.0
       z: 0.0
       w: 0.0
   - frame_id: "setup/aris"
