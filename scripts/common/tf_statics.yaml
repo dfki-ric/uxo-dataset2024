@@ -69,3 +69,59 @@ setup:
       y: 0.5
       z: 0.5
       w: 0.5
+targets:  
+  - frame_id: "target/100lbs"
+    parent_frame_id: "world"
+    translation:
+      x: 1.251079
+      y: 1.592704
+      z: -1.489828
+    rotation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+  - frame_id: "target/mortar_shell"
+    parent_frame_id: "world"
+    translation:
+      x: 1.263516
+      y: 1.4371
+      z: -1.51891
+    rotation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+  - frame_id: "target/incendiary"
+    parent_frame_id: "world"
+    translation:
+      x: 1.2351
+      y: 1.409233
+      z: -1.530784
+    rotation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+  - frame_id: "target/cylinder"
+    parent_frame_id: "world"
+    translation:
+      x: 1.277832
+      y: 1.399541
+      z: -1.461439
+    rotation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
+  - frame_id: "target/100lbs_floor"
+    parent_frame_id: "world"
+    translation:
+      x: 1.174003
+      y: 1.227536
+      z: -2.2411
+    rotation:
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
