@@ -4,13 +4,36 @@ import re
 import shutil
 import yaml
 import pandas as pd
+import numpy as np
+from scipy.spatial.transform import Rotation as R
 import cv2
 from tqdm import tqdm, trange
 
 from common.config import get_config
 from common.aris_definitions import FrameHeaderFields
 from common.matching_context import MatchingContext, folder_basename
+from common.transforms import get_tf_manager
 
+
+def _create_ar3_df(df_aris_metadata, df_portal_crane):
+    tm = get_tf_manager()
+
+    poss = []
+    for index, row in df_portal_crane.iterrows():
+        A2B = np.eye(4) 
+        A2B[:3,3] = np.array(row[['x','y','z']])
+        tm.add_transform("setup/portal_crane", "world", A2B=A2B)
+        poss.append(tm.get_transform("setup/ar3", "world")[:3, 3])
+
+    rots = [(R.from_matrix(tm.get_transform("setup/ar3", "world")[:3,:3]) * 
+             R.from_euler('xyz', row[['SonarRoll', 'SonarTilt', 'SonarPan']], degrees=True)).as_quat() for index, row in df_aris_metadata.iterrows()]
+
+    df_ar3 = pd.DataFrame()
+    df_ar3['aris_frame_idx'] = df_portal_crane['aris_frame_idx']
+    df_ar3[['pos.x','pos.y', 'pos.z']] = poss.round(6)
+    df_ar3[['rot.x','rot.y', 'rot.z', 'rot.w']] = rots.round(6)
+
+    return df_ar3
 
 def get_target_type(notes: str) -> str:
     for line in notes.splitlines():
@@ -107,6 +130,9 @@ def export_recording(match: pd.Series,
     # Write gantry data
     pd.DataFrame(gantry_data, columns=['aris_frame_idx', 'x', 'y', 'z']).to_csv(os.path.join(rec_root, 'gantry.csv'), header=True, index=False)
     
+    # Write ar3 data
+    _create_ar3_df(frame_meta_sel, gantry_data).to_csv(os.path.join(rec_root, 'ar3.csv'), header=True, index=False)
+
     # Additional notes
     with open(os.path.join(rec_root, 'notes.txt'), 'w') as f:
         f.write(match['notes'])
