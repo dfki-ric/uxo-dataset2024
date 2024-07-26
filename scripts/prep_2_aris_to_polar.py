@@ -15,6 +15,16 @@ from common.aris_definitions import (
 )
 
 
+"""
+The sonar data was recorded in the proprietary .aris file format. The means to read the data is provided by the company as a file SDK at https://github.com/SoundMetrics/aris-integration-sdk. We have ported the relevant sections for our scripts (see common/aris_definitions.py).
+
+An Aris file contains a number of frames that split the recording in time. Each frame consists of beams across the horizontal dimension, which in turn are divided vertically into individual samples. Each sample represents a signal of acoustic energy in the range of 0-80 dB.
+The lens of the Aris introduces a non-linear beam spacing. The beam pattern calibrations based on actual measurements is provided through the SDK.
+The relative time window for each sample is given from which its vertical extend can be inferred given the sound velocity.
+The area represented by a sample is a sector of an annulus. Since the time windows are constant within a frame, the effectively ensonified area increases with the vertical distance from the camera center. The polar transformed images we provide were created by plotting approximations of these shapes into a high resolution image. The color value corresponds to the measured acoustic energy.
+"""
+
+
 def paint_pixel_antialiased(image: np.ndarray, x: float, y: float, value: int):
     int_x, frac_x = int(x), x - int(x)
     int_y, frac_y = int(y), y - int(y)
@@ -35,6 +45,15 @@ def paint_pixel_antialiased(image: np.ndarray, x: float, y: float, value: int):
 def aris_frame_to_polar(
     frame, frame_idx, metadata, norm_intensity=False, antialiasing=False, scale=2.0
 ):
+    # NOTE aris_frame_to_polar2 produces much nicer pictures, use that one instead. 
+    # This one may still be useful when performance is key.
+    import warnings
+    warnings.warn(
+        "aris_frame_to_polar is deprecated, use aris_frame_to_polar2 instead", 
+        DeprecationWarning, 
+        stacklevel=2
+    )
+
     frame_meta = metadata.iloc[frame_idx]
     pingmode = frame_meta[FrameHeaderFields.ping_mode]
     bin_count = int(frame_meta[FrameHeaderFields.samples_per_beam])
