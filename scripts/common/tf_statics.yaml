@@ -41,8 +41,8 @@ setup:
     rotation:
       x: 0.0
       y: 0.0
-      z: 0.0
-      w: 1.0
+      z: 0.0 #0.08715574
+      w: 1.0 #0.9961947
   - frame_id: "setup/gopro_mounting_axis"
     parent_frame_id: "setup/gopro_mounting_hole"
     translation:
@@ -50,14 +50,14 @@ setup:
       y: 0.0
       z: -0.0075
     rotation:
-      x: 0.0      
-      y: -0.034899
-      z: 0.0      
-      w: 0.999391
-      # x: 0.0
-      # y: 0.0
-      # z: 0.0
-      # w: 1.0
+      # x: 0.0      
+      # y: -0.0348995
+      # z: 0.0      
+      # w: 0.99939083
+      x: 0.0
+      y: 0.0
+      z: 0.0
+      w: 1.0
   - frame_id: "setup/camera"
     parent_frame_id: "setup/gopro_mounting_axis"
     translation:
