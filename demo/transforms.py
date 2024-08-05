@@ -37,7 +37,7 @@ def _generate_tf_manager_for_all(tf_statics):
 
 
 def get_tf_manager():
-    filename = path.join(path.dirname(path.realpath(__file__)), 'tf_statics.yaml')
+    filename = path.join(path.dirname(path.realpath(__file__)), '../calibration/transforms.yaml')
     if path.isfile(filename):
         tf_statics = _read_yaml_file(filename)
         tf_manager = _generate_tf_manager_for_all(tf_statics)

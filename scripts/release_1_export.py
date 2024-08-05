@@ -12,7 +12,7 @@ from tqdm import tqdm, trange
 from common.config import get_config
 from common.aris_definitions import FrameHeaderFields
 from common.matching_context import MatchingContext, folder_basename
-from common.transforms import get_tf_manager
+from dataset.calibration.tf_demo.transforms import get_tf_manager
 
 
 def _create_ar3_df(df_aris_metadata, df_portal_crane):
@@ -170,6 +170,8 @@ if __name__ == '__main__':
                          gopro_format=gopro_format, 
                          trim_from_gopro=trim_from_gopro)
     
+    # NOTE labels have been generated after export, so this script can't know about them
+
     # Copy 3d models
     print('Copying 3d models...')
     model_dir = os.path.join(export_dir, '3d_models/')
@@ -185,6 +187,13 @@ if __name__ == '__main__':
                     scripts_dir, 
                     dirs_exist_ok=True, 
                     ignore=lambda src, names: [x for x in names if '__pycache__' in x])
+
+    # Copy calibration data
+    print('Copying calibrations...')
+    calib_dir = os.path.join(export_dir, 'calibration')
+    shutil.copytree(os.path.join(data_root, '../calibration'),
+                    calib_dir,
+                    dirs_exist_ok=True)
 
     # Copy README and more
     print('Tidying up...')
