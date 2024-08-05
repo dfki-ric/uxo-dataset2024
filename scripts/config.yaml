@@ -74,6 +74,7 @@ gopro_input: "../data_raw/gopro/"
 gopro_extract: "../data_processed/gopro"
 
 # Target resolution of the clips when downsampling. Combine several resolutions as "fhd+sd"
+#  - uhd: ultra HD (5.3k, 5312x2988), if you have too much space and time
 #  - fhd: full HD (1080p, 1920x1080), convenient for export
 #  - sd: low resolution (640x360), best for previews and matching
 gopro_clip_resolution: "sd+fhd"

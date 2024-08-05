@@ -1,0 +1,11 @@
+ffmpeg==1.4
+matplotlib==3.9.0
+numpy==2.0.1
+pandas==2.2.2
+PyQt5==5.15.11
+pytransform3d==3.5.0
+pytz==2024.1
+PyYAML==6.0.1
+PyYAML==6.0.1
+scipy==1.14.0
+tqdm==4.66.2
