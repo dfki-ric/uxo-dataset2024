@@ -14,6 +14,7 @@ mkdir -p "$outdir"
 7z a -mx=5 -r "${archive}_recordings.7z" $indir/recordings/ -xr'!*/aris_polar/*'
 
 # Only the polar transformed images
+# TODO invalid expansion?
 7z a -mx=5 -r "${archive}_polar.7z" -ir'!'"${$indir}/*/aris_polar/*"
 
 # 3d models
@@ -22,7 +23,11 @@ mkdir -p "$outdir"
 # Scripts
 7z a -mx=5 -r "${archive}_scripts.7z" $indir/scripts/
 
+# Calibration
+7z a -mx=5 -r "${archive}_calibration.7z" $indir/calibration/
+
 # Copy stuff like README and preview picture
+# TODO didn't work (cannot stat first?)
 cp "$indir/*.*" "$outdir/"
 
 echo "Created archive: $archive"
