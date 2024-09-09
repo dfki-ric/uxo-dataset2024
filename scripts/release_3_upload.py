@@ -3,7 +3,7 @@ import requests
 import click
 
 
-@click.command
+@click.command()
 @click.argument("files", type=click.Path(exists=True), nargs=-1)
 @click.option("--key", prompt="Access token")
 @click.option("--bucket", prompt="Bucket URL")
@@ -16,7 +16,7 @@ def main(files, key, bucket):
             r = requests.put(
                 f"{bucket}/{filename}", data=fp, params={"access_token": key}
             )
-            print(f"{r.status_code}:\n{r.json}")
+            print(f"{r.status_code}:\n{r.json()}")
 
 
 if __name__ == "__main__":
