@@ -38,8 +38,10 @@ class DatasetViewer(QtWidgets.QMainWindow):
         # Plots
         self._canvas_aris = QtWidgets.QLabel()
         self._canvas_aris.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        #self._canvas_aris.setScaledContents(True)
         self._canvas_gopro = QtWidgets.QLabel()
         self._canvas_gopro.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        #self._canvas_gopro.setScaledContents(True)
         
         # Info boxes
         self._pos_info = QtWidgets.QLabel()
@@ -97,8 +99,24 @@ class DatasetViewer(QtWidgets.QMainWindow):
         self._layout = QtWidgets.QVBoxLayout(self._main_widget)
         self._layout.addWidget(splitter)
         self.setCentralWidget(self._main_widget)
+
+        self.resize(1200, 960)
         
-    
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.scale_image()
+
+    # Scale the image while keeping the aspect ratio
+    def scale_image(self):
+        aris = self._canvas_aris.pixmap()
+        gopro = self._canvas_gopro.pixmap()
+
+        if aris:
+            self._canvas_aris.setPixmap(aris.scaled(self._canvas_aris.size(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
+
+        if gopro:
+            self._canvas_gopro.setPixmap(gopro.scaled(self._canvas_gopro.size(), QtCore.Qt.KeepAspectRatio, QtCore.Qt.SmoothTransformation))
+
     def _load_recording(self, recording_dir: str, aris_polar: bool = True):
         self._dataset_name = folder_basename(recording_dir)
         
