@@ -14,25 +14,22 @@ This dataset has the following properties:
  - Known and accurate transforms between sonar and targets.
  - Known details UXO targets including munition types, dimensions, and 3D models.
  - Tracked scan trajectories that are typical and achievable for non-experimental environments.
- - Publicly available at [https://zenodo.org/records/11068046].
+ - Publicly available at [https://zenodo.org/records/13778485].
  - Export scripts available at [https://github.com/dfki-ric/uxo-dataset2024].
 
-This repository contains the code we used to prepare the raw recordings for export. A more in-depth description of the data can be found with the dataset itself and the accompanying [PAPER]().
+This repository contains the code we used to prepare the raw recordings for export. A more in-depth description of the data can be found with the dataset itself and the accompanying [PAPER](https://www.researchgate.net/publication/386124306_An_Acoustic_and_Optical_Dataset_for_the_Perception_of_Underwater_Unexploded_Ordnance_UXO).
 
 
 # Citing
 When using this dataset or the code used to process it, please cite the following paper:
 
 ```bibtex
-@inproceedings{Dahn2024-uxo,
-  title = {An Acoustic and Optical Dataset for the Perception of Underwater Unexploded Ordnance (UXO)},
-  author = {Dahn, Nikolas and Bande Firvida, Miguel and Sharma, Proneet and Christensen, Leif and Geisler, Oliver and Mohrmann, Jochen and Frey, Torsten and Sanghamreddy, Prithvi Kumar and Kirchner, Frank},
-  keywords = {UXO, unexploded ordnance, dataset, imaging sonar},
-  booktitle = {2024 IEEE OCEANS}, 
-  year = {2024},
-  pages = {},
-  doi = {},
-  url = {},
+@INPROCEEDINGS{dahn2024uxo,
+  author={Dahn, Nikolas and Firvida, Miguel Bande and Sharma, Proneet and Christensen, Leif and Geisle, Oliver and Mohrmann, Jochen and Frey, Torsten and Kumar Sanghamreddy, Prithvi and Kirchner, Frank},
+  title={An Acoustic and Optical Dataset for the Perception of Underwater Unexploded Ordnance (UXO)}, 
+  booktitle={OCEANS 2024 - Halifax}, 
+  year={2024},
+  doi={10.1109/OCEANS55160.2024.10754316}
 }
 ```
 
