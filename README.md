@@ -11,8 +11,9 @@ This dataset has the following properties:
 
  - Sonar scans of multiple UXO using an ARIS Explorer 3000 imaging sonar.
  - Matched GoPro UHD frames for most sonar frames.
+ - Labels for GoPro frames (*multiply coordinates by 3!*)
  - Known and accurate transforms between sonar and targets.
- - Known details UXO targets including munition types, dimensions, and 3D models.
+ - Known details of UXO targets including munition types, dimensions, and 3D models.
  - Tracked scan trajectories that are typical and achievable for non-experimental environments.
  - Publicly available at [https://zenodo.org/records/13778485].
  - Export scripts available at [https://github.com/dfki-ric/uxo-dataset2024].
