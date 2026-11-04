@@ -1,0 +1,7 @@
+rerun-sdk>=0.41,<0.42
+numpy>=2.0
+pandas>=2.2
+opencv-python-headless>=4.10
+PyYAML>=6.0
+scipy>=1.14
+py7zr>=0.22

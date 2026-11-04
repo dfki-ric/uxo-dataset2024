@@ -8,3 +8,5 @@ __pycache__
 *.pyc
 *.7z
 mount_data.sh
+data_download
+.venv*
