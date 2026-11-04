@@ -44,6 +44,93 @@ The exported data uses simple, well-established formats, namely .pgm, .jpg, .csv
 python scripts/view_recording.py data_export/recordings/<target_type>/<recording-folder>
 ```
 
+## Visualizing the data in Rerun
+[`rerun_viz/log_to_rerun.py`](rerun_viz/log_to_rerun.py) logs recordings to [Rerun](https://rerun.io), so you can scrub through the GoPro, ARIS and gantry data together in one synchronized 3D scene.
+
+For each recording it shows:
+
+ - **Scene (3D):** the gantry and AR3 pose chain from `calibration/transforms.yaml`, `gantry.csv` and the AR3 pan/tilt/roll in `aris_frame_meta.csv`. It also includes the full AR3 trajectory, the target pose, the GoPro camera frustum, the ARIS field of view (an orange frustum: ±15° horizontally, `--sonar-elevation` vertically, between the window start and end range) and the ARIS returns back-projected into 3D.
+ - **GoPro:** each frame with its bounding-box label, the ARIS field-of-view outline and the ARIS returns projected into the image.
+ - **ARIS polar:** the polar-transformed sonar image.
+ - **Plots:** gantry position and AR3 pan/tilt/roll over time.
+ - **Target scan / Notes:** the textured 3D model of the target (in its own view, since the scans are not registered to the target frames) and the recording notes.
+
+Two timelines are available: `aris_frame` (frame index) and `time` (ARIS timestamp).
+
+### 1. Install
+Use Python 3.10 to 3.12 (the pinned NumPy has no wheels for newer versions). Create a virtual environment:
+
+```bash
+python -m venv .venv
+```
+
+Activate it (`source .venv/bin/activate` on Linux/macOS, `.venv\Scripts\activate` on Windows), then install the requirements:
+
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Download the data
+The full dataset is about 95 GB. The 1.7 GB sample contains five complete recordings (100 lbs bomb, 15 cm mortar and 20 lbs incendiary, as left-to-right sweeps and flybys) and is enough to get started. Download it together with the 3D models:
+
+```bash
+mkdir -p data_download && cd data_download
+```
+
+```bash
+curl -L -o sample.7z https://zenodo.org/api/records/13778485/files/sample.7z/content
+```
+
+```bash
+curl -L -o data_export_3dmodels.7z https://zenodo.org/api/records/13778485/files/data_export_3dmodels.7z/content
+```
+
+```bash
+python -m py7zr x sample.7z extracted && python -m py7zr x data_export_3dmodels.7z extracted && cd ..
+```
+
+This produces `data_download/extracted/uxo_samples/<recording>/` and `data_download/extracted/3d_models/`. The calibration is already part of this repository. For the full export, download `data_export_recordings.7z` (16.7 GB, about 33 GB unpacked) from [Zenodo](https://zenodo.org/records/13778485) instead and point the script at its `recordings/<target_type>/` folders.
+
+### 3. Visualize
+Stream a single recording into a Rerun viewer:
+
+```bash
+python rerun_viz/log_to_rerun.py data_download/extracted/uxo_samples/2023-09-20_180722 --spawn
+```
+
+Or write one `.rrd` file per recording (pass a folder to log every recording in it), then open them all at once. The recordings show up under *Sources* in the viewer:
+
+```bash
+python rerun_viz/log_to_rerun.py data_download/extracted/uxo_samples --save-dir data_download/rrd
+```
+
+```bash
+rerun data_download/rrd/*.rrd
+```
+
+Logging all five sample recordings takes a few minutes and produces about 1.9 GB of `.rrd` files.
+
+### Options
+
+| Option | Default | Description |
+|---|---|---|
+| `--overlay-mode {band,line}` | `band` | How ARIS returns are drawn in the GoPro image. `band` spreads every return over the vertical aperture as a heatmap, weighted by the beam pattern (half strength at the edges). `line` draws each return as a point at zero elevation. |
+| `--sonar-elevation` | `14` | Vertical aperture of the ARIS in degrees, used for the frustum and the band overlay. |
+| `--threshold` | `35` | Minimum raw ARIS intensity (0–255) for a return to be shown. |
+| `--bin-step` | `2` | Range-bin subsampling of the ARIS frame. |
+| `--every` | `1` | Log only every n-th frame, for quick previews. |
+| `--overlay-alpha` | `200` | Maximum opacity (0–255) of the sonar overlay in the GoPro image. |
+| `--overlay-radius` | `2.0` | Point radius of the `line` overlay. |
+| `--models` | `data_download/extracted/3d_models` | Folder with the target `.obj` scans. |
+| `--calibration` | `calibration/transforms.yaml` | Static transforms. |
+
+### Notes and limitations
+ - The ARIS measures range and bearing but not elevation, so a return could have come from anywhere in the vertical aperture. This is why `band` mode is the default. The `line` overlay and the 3D returns place everything at zero elevation.
+ - The 14° vertical aperture is the ARIS Explorer 3000 specification; it is not stored in the data.
+ - The ARIS beam angles come from `scripts/common/aris_definitions.py`. The left/right sign follows the convention of `prep_2_aris_to_polar.py` and has not been verified independently.
+ - GoPro frames use the `linear` intrinsics from `calibration/camera_parameters/` and are shown without undistortion. Label coordinates are multiplied by 3, as described above.
+ - Camera-to-target alignment is tighter in the left-to-right sweeps than in the flybys.
+
 
 ## Preprocessing
 Reducing the dataset down to the (for us) relevant parts was subject to some challenges, largely due to oversights on our part. For one, the GoPro does not have a synchronized timestamp, so for us the best way to match the footage to the ARIS data was by matching the motion. In addition, the GoPro's recording and file naming scheme (combined with some dropouts due to low battery) made it difficult to find the corresponding clip for every recording. Calculating the optical flow has helped in these regards. The motion onset identified in the ARIS data was used to trim the other sensors after matching. In general, decisions were always made based on and in favor of the ARIS data.
