@@ -58,16 +58,16 @@ For each recording it shows:
 Two timelines are available: `aris_frame` (frame index) and `time` (ARIS timestamp).
 
 ### 1. Install
-Use Python 3.10 or newer. A separate virtual environment avoids version conflicts with the preprocessing requirements:
+Use Python 3.10 to 3.12 (the pinned NumPy has no wheels for newer versions). Create a virtual environment:
 
 ```bash
-python -m venv .venv-rerun
+python -m venv .venv
 ```
 
-Activate it (`source .venv-rerun/bin/activate` on Linux/macOS, `.venv-rerun\Scripts\activate` on Windows), then install the requirements:
+Activate it (`source .venv/bin/activate` on Linux/macOS, `.venv\Scripts\activate` on Windows), then install the requirements:
 
 ```bash
-pip install -r rerun_viz/requirements.txt
+pip install -r requirements.txt
 ```
 
 ### 2. Download the data
